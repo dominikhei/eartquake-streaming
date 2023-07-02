@@ -5,7 +5,11 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.CountDownLatch;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
+
+import dominikhei.seismickafkaproducer.serealization.JsonParser;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.json.*;
 
 @Component
 public class WebSocketClient implements WebSocket.Listener {
@@ -13,8 +17,12 @@ public class WebSocketClient implements WebSocket.Listener {
     @Autowired
     private Producer producer;
 
-    public WebSocketClient(Producer producer) {
+    @Autowired
+    private JsonParser parser;
+
+    public WebSocketClient(Producer producer, JsonParser parser) {
         this.producer = producer;
+        this.parser = parser;
     }
     
     public void onOpen(WebSocket webSocket) {
@@ -22,7 +30,10 @@ public class WebSocketClient implements WebSocket.Listener {
     }
 
     public CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last) {
-        producer.sendMessageToTopic(data.toString());
+        
+        JSONObject jsonObj = parser.createObject(data.toString());
+        producer.sendMessageToTopic(jsonObj);
+        
         System.out.println("sent data to kafka");
         return WebSocket.Listener.super.onText(webSocket, data, last);
     }
