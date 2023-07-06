@@ -15,7 +15,7 @@ public class JsonParser {
 
         Float magnitude = propertiesObject.getFloat("mag");
         Float latitude = propertiesObject.getFloat("lat");
-        Float longtitude = propertiesObject.getFloat("lon");
+        Float longitude = propertiesObject.getFloat("lon");
         Integer depth = propertiesObject.getInt("depth");
         String dateTime = propertiesObject.getString("time");
         String[] parts = dateTime.split("T|\\.");
@@ -26,27 +26,11 @@ public class JsonParser {
         finalObj.put("time", time);
         finalObj.put("date", date);
         finalObj.put("latitude", latitude);
-        finalObj.put("longtitude", longtitude);
+        finalObj.put("longitude", longitude);
         finalObj.put("depth", depth);
         finalObj.put("magnitude", magnitude);
 
         return finalObj;
 
     }
-
-
-
-    // I only want magnitude, latitude, longtitude, date and time 
-    
-    // Have a base method to convert it to a JsonObject 
-
-
-
-    // Extract only the relevant key value pairs from it via another function 
-
-    // Have a final toParsedJson() method which is a wrapper around all of 
-    // these and returns a Json Object 
-
-    // Change kafkaProducerConfig to the Json Serealizer 
-    
 }

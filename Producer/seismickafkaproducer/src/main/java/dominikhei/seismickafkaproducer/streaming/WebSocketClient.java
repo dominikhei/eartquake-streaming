@@ -1,11 +1,9 @@
 package dominikhei.seismickafkaproducer.streaming;
 
+import dominikhei.seismickafkaproducer.serealization.JsonParser;
 import java.net.http.WebSocket;
 import java.util.concurrent.CompletionStage;
 import org.springframework.stereotype.Component;
-
-import dominikhei.seismickafkaproducer.serealization.JsonParser;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.json.*;
 
