@@ -2,8 +2,6 @@ package dominikhei.seismickafkaproducer.streaming;
 
 import java.net.http.WebSocket;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.CountDownLatch;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
 import dominikhei.seismickafkaproducer.serealization.JsonParser;
@@ -34,7 +32,7 @@ public class WebSocketClient implements WebSocket.Listener {
         JSONObject jsonObj = parser.createObject(data.toString());
         producer.sendMessageToTopic(jsonObj);
         
-        System.out.println("sent data to kafka");
+        System.out.println(jsonObj.toString());
         return WebSocket.Listener.super.onText(webSocket, data, last);
     }
 
