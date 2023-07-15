@@ -1,5 +1,6 @@
 package dominikhei.seismickafkaproducer.serealization;
 
+import java.util.UUID;
 import org.json.*;
 import org.springframework.stereotype.Service;
 
@@ -22,6 +23,9 @@ public class JsonParser {
         String date = parts[0];
         String time = parts[1];
 
+        UUID uuid = UUID.randomUUID();
+        String uuidAsString = uuid.toString();
+
         JSONObject finalObj = new JSONObject();
         finalObj.put("time", time);
         finalObj.put("date", date);
@@ -29,8 +33,10 @@ public class JsonParser {
         finalObj.put("longitude", longitude);
         finalObj.put("depth", depth);
         finalObj.put("magnitude", magnitude);
+        finalObj.put("uuid", uuidAsString);
 
         return finalObj;
 
     }
 }
+

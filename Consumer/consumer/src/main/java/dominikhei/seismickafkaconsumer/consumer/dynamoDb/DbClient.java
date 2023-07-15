@@ -18,9 +18,9 @@ public class DbClient {
     public void uploadToTable(String tableName, JSONObject json) {
         DynamoDB dynamoDb = clientBuilder();
         Table table = dynamoDb.getTable(tableName);
+        String id = json.get("uuid").toString();
         String jsonString = json.toString();
-        Item item = new Item().withPrimaryKey("id", 1).withJSON("data", jsonString);
-
+        Item item = new Item().withPrimaryKey("id", id).withJSON("data", jsonString);
     }
     
 }
