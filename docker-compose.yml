@@ -19,7 +19,7 @@ services:
       - "3100:3100"
     command: -config.file=/etc/loki/loki-config.yaml
     volumes:
-      - ./lokiconfig/:/etc/loki
+      - ./volumes/loki/etc:/etc/loki
 
   kafka:
     hostname: kafka
@@ -59,5 +59,3 @@ services:
       - kafka
       - producer
 
-volumes:
-  lokiconfig:
