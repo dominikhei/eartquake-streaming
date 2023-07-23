@@ -2,8 +2,6 @@ package dominikhei.seismickafkaconsumer.consumer.dynamoDb;
 
 import org.json.JSONObject;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
-import com.amazonaws.auth.AWSStaticCredentialsProvider;
-import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
