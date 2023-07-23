@@ -22,3 +22,23 @@ Apache Kafka is a distributed streaming platform which makes it easy to integrat
 
 The streaming microservice sits on an EC2 machine and is defined using docker compose. 
 The custom producer and consumer containers will be uploaded to AWS ECR and later pulled from there. 
+
+__Consumer & Producer__
+
+
+__Logging__ 
+
+Application logging is done with Loki and Grafana in docker containers to extract and visualize logs. I have used the docker Loki plugin, which extracts the logs from all containers and the Loki instance ships them to Grafana. 
+Grafana allows one to query the logs and visualize them. You can access Grafana from your machine using the EC2 instances IP adress and the port 3000. I have set the log level of Loki to info, which means it extracts all logs. You can adjust that in the  loki-config.yaml file. 
+
+Here is example Grafana dashbaord:
+![](./.images/grafana.jpeg)
+
+__Database__
+
+__Frontend service__
+
+__Load balancer__
+
+
+

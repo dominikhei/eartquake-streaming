@@ -4,6 +4,7 @@ import org.json.JSONObject;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
@@ -14,8 +15,10 @@ public class DbClient {
 
     public DynamoDB clientBuilder() {
         AmazonDynamoDB client = AmazonDynamoDBClientBuilder.standard()
-            .withRegion(Regions.EU_CENTRAL_1)
-            .build();
+                .withCredentials(DefaultAWSCredentialsProviderChain.getInstance())
+                .withRegion(Regions.EU_CENTRAL_1)
+                .build();
+    
         DynamoDB dynamoDB = new DynamoDB(client);
         return dynamoDB;
     }
