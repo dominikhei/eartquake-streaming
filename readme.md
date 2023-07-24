@@ -20,10 +20,15 @@ Apache Kafka is a distributed streaming platform which makes it easy to integrat
 
 ![](./.images/docker.png)
 
-The streaming microservice sits on an EC2 machine and is defined using docker compose. 
+The streaming application sits on an EC2 machine and is defined using docker compose. 
 The custom producer and consumer containers will be uploaded to AWS ECR and later pulled from there. 
 
 __Consumer & Producer__
+
+Both Consumer and Producer are implemented in Java with SpringBoot. 
+The Producer has an open websocket, that listens for new events (an event is an earthquake that has occured). The event is turned into a custom JSONObject with the relevant keys for the scope of this application. The Json is then serealized using a custom serealizer to send it to Kafka. In the scope of Kafka serealization refers turning an object into a stream of bytes that can be transmitted into the queue. 
+
+The Consumer reads the events that have arrived and deserealizes it into a JSONObject. In the next step it is written to DynamoDB, a NoSql Key-Value store on AWS, using the AWS SDK. For security reasons I have opted against using credentials, but instead assuming the role of the underlying EC2 instance, which has just the required least priviledges. 
 
 
 __Logging__ 
@@ -35,6 +40,8 @@ Here is example Grafana dashbaord:
 ![](./.images/grafana.jpeg)
 
 __Database__
+
+As a database I have used DynamoDB. DynamoDB is a key-value store on AWS that uses 3 storage nodes across which data is partitioned according to the hash value of a private key. DynamoDB moreover has the option of global tables, where a table is replicated across multiple regions. If the frontend service gets accessed from all over the world, global tables can reduce latency by a lot. Moreover global tables make writing to replicated tables and keeping consistency across regions very simple, by handling all of that within AWS. 
 
 __Frontend service__
 
