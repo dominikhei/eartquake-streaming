@@ -1,7 +1,6 @@
-version: '4'
 services:
   zookeeper:
-    image: confluentinc/cp-zookeeper:latest
+    image: confluentinc/cp-zookeeper:3.8.2
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
@@ -14,7 +13,7 @@ services:
 
   loki:
     hostname: loki
-    image: grafana/loki:latest
+    image: grafana/loki:2.8.3
     ports:
       - "3100:3100"
     command: -config.file=/etc/loki/loki-config.yaml
@@ -22,13 +21,13 @@ services:
       - ./volumes/loki/etc:/etc/loki
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:10.0.3
     ports:
       - "3000:3000"
 
   kafka:
     hostname: kafka
-    image: confluentinc/cp-kafka:latest
+    image: confluentinc/cp-kafka:6.0.14
     logging:
       driver: loki
       options:

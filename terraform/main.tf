@@ -2,6 +2,28 @@ provider "aws" {
   region = var.aws_region #replace the region to your desired region in the var.tf file
 }
 
+provider "tls" {
+
+}
+
+# Create a .pem key to openssh into the EC2 instance
+
+resource "tls_private_key" "this" {
+  algorithm     = "RSA"
+  rsa_bits      = 4096
+}
+
+resource "aws_key_pair" "this" {
+  key_name      = "kafka-server-key"
+  public_key    = tls_private_key.this.public_key_openssh
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      echo "${tls_private_key.this.private_key_pem}" > kafka-server-key.pem
+    EOT
+  }
+}
+
 resource "aws_vpc" "seismic-project-vpc" {
   cidr_block = "10.0.0.0/16"
 
@@ -70,22 +92,24 @@ resource "aws_route_table_association" "seismic_route_table_association" {
   route_table_id = aws_route_table.seismic_route_table.id
 }
 
-resource "aws_instance" "airflow_server" {
-  ami           = "ami-0d1ddd83282187d18" #Change this!!!
+resource "aws_instance" "kafka_server" {
+  ami           = "ami-04e601abe3e1a910f" 
   instance_type = "t2.large"
   subnet_id     = aws_subnet.seismic-subnet.id
-  key_name= "airflow-server-key"
+  key_name= "kafka-server-key"
   associate_public_ip_address = true
 
   tags = {
-    Name = "airflow-server"
+    Name = "kafka-server"
   }
 
   vpc_security_group_ids = [
     aws_security_group.project_security_group.id
   ]
 
-user_data = <<EOF
+  iam_instance_profile = aws_iam_instance_profile.ec2_instance_profile.name
+
+user_data = <<-EOL
 #!/bin/bash
 
 sudo apt-get -y update
@@ -95,25 +119,21 @@ sudo chmod 666 /var/run/docker.sock
 
 sudo apt-get -y install git
 
-git config --global user.name ${var.git_username}
-git config --global user.email ${var.git_mail}
-
-mkdir seismicservice
-
-cd seismicservice 
-
 git clone https://github.com/dominikhei/eartquake-streaming.git
 
-cd DistributedSesimicSystem
+docker plugin install grafana/loki-docker-driver:latest --alias loki --grant-all-permissions
+
+sudo systemctl restart docker
+
+cd eartquake-streaming/
 
 docker-compose up -d 
-EOF
+EOL
 
-iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
 }
 
-resource "aws_iam_role" "ec2_dynamodb_role" {
-  name = "EC2DynamoDBRole"
+resource "aws_iam_role" "ec2_role" {
+  name = "ec2-role"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -129,7 +149,7 @@ resource "aws_iam_role" "ec2_dynamodb_role" {
 }
 
 resource "aws_iam_policy" "dynamodb_policy" {
-  name        = "DynamoDBReadWritePolicy"
+  name        = "dynamo-policy"
   description = "Allows read and write access to a specific DynamoDB table"
   
   policy = jsonencode({
@@ -153,25 +173,23 @@ resource "aws_iam_policy" "dynamodb_policy" {
 
 resource "aws_iam_role_policy_attachment" "attach_policy" {
   policy_arn = aws_iam_policy.dynamodb_policy.arn
-  role       = aws_iam_role.ec2_dynamodb_role.name
+  role       = aws_iam_role.ec2_role.name
 }
 
-resource "aws_iam_instance_profile" "ec2_profile" {
-  name = "ec2_dynamodb_profile"
-  role = aws_iam_role.ec2_dynamodb_role
+resource "aws_iam_instance_profile" "ec2_instance_profile" {
+  name = "ec2-instance-profile"
+  role = aws_iam_role.ec2_role.name
 }
+
+
 
 resource "aws_dynamodb_table" "eartquakes" {
- name = "eartquakes"
- billing_mode = "PAY_PER_REQUEST"
- attribute {
-  name = "id"
-  type = "S"
- }
+  name = "eartquakes"
+  billing_mode = "PAY_PER_REQUEST"
   attribute {
-  name = "data"
-  type = "S"
+    name = "id"
+    type = "S"
  }
- hash_key = "id"
+  hash_key = "id"
 }
 
