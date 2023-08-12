@@ -6,8 +6,6 @@ provider "tls" {
 
 }
 
-# Create a .pem key to openssh into the EC2 instance
-
 resource "tls_private_key" "this" {
   algorithm     = "RSA"
   rsa_bits      = 4096
@@ -24,6 +22,22 @@ resource "aws_key_pair" "this" {
   }
 }
 
+resource "tls_private_key" "this_two" {
+  algorithm     = "RSA"
+  rsa_bits      = 4096
+}
+
+resource "aws_key_pair" "this_two" {
+  key_name      = "logging-server-key"
+  public_key    = tls_private_key.this_two.public_key_openssh
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      echo "${tls_private_key.this_two.private_key_pem}" > logging-server-key.pem
+    EOT
+  }
+}
+
 resource "aws_vpc" "seismic-project-vpc" {
   cidr_block = "10.0.0.0/16"
 
@@ -35,6 +49,7 @@ resource "aws_vpc" "seismic-project-vpc" {
 resource "aws_subnet" "seismic-subnet" {
   vpc_id     = aws_vpc.seismic-project-vpc.id
   cidr_block = "10.0.1.0/24"
+  availability_zone = "${var.aws_region}a"
 
   tags = {
     Name = "seismic-subnet"
@@ -46,8 +61,8 @@ resource "aws_security_group" "project_security_group" {
 
  ingress {
     from_port = 0
-    to_port   = 65535
-    protocol  = "tcp"
+    to_port   = 0
+    protocol  = "-1"
     self = true
   }
  ingress {
@@ -79,8 +94,6 @@ resource "aws_route_table" "seismic_route_table" {
   }
 }
 
-
-# Attach the internet gateway to the VPC's route table
 resource "aws_route" "route" {
   route_table_id         = aws_route_table.seismic_route_table.id
   destination_cidr_block = "0.0.0.0/0"
@@ -93,7 +106,7 @@ resource "aws_route_table_association" "seismic_route_table_association" {
 }
 
 resource "aws_instance" "kafka_server" {
-  ami           = "ami-04e601abe3e1a910f" 
+  ami           = "ami-04e601abe3e1a910f" // eu-central-1
   instance_type = "t2.large"
   subnet_id     = aws_subnet.seismic-subnet.id
   key_name= "kafka-server-key"
@@ -107,29 +120,25 @@ resource "aws_instance" "kafka_server" {
     aws_security_group.project_security_group.id
   ]
 
-  iam_instance_profile = aws_iam_instance_profile.ec2_instance_profile.name
+  iam_instance_profile = aws_iam_instance_profile.streaming_instance_profile.name
 
-user_data = <<-EOL
-#!/bin/bash
+  user_data = file("initiate.sh")
+}
 
-sudo apt-get -y update
-sudo apt-get -y install docker.io docker-compose
-
-sudo chmod 666 /var/run/docker.sock
-
-sudo apt-get -y install git
-
-git clone https://github.com/dominikhei/eartquake-streaming.git
-
-docker plugin install grafana/loki-docker-driver:latest --alias loki --grant-all-permissions
-
-sudo systemctl restart docker
-
-cd eartquake-streaming/
-
-docker-compose up -d 
-EOL
-
+resource "aws_instance" "logging" {
+    ami = "ami-04e601abe3e1a910f" // eu-central-1
+    instance_type = "t2.small"
+    private_ip = "10.0.1.10"
+    subnet_id     = aws_subnet.seismic-subnet.id
+    associate_public_ip_address = true
+    key_name= "logging-server-key"
+    vpc_security_group_ids = [
+    aws_security_group.project_security_group.id
+  ]
+  tags = {
+    Name = "monitoring-server"
+  }
+  user_data = file("initiate_logging.sh")
 }
 
 resource "aws_iam_role" "ec2_role" {
@@ -176,20 +185,22 @@ resource "aws_iam_role_policy_attachment" "attach_policy" {
   role       = aws_iam_role.ec2_role.name
 }
 
-resource "aws_iam_instance_profile" "ec2_instance_profile" {
-  name = "ec2-instance-profile"
+resource "aws_iam_instance_profile" "streaming_instance_profile" {
+  name = "streaming-instance-profile"
   role = aws_iam_role.ec2_role.name
 }
 
+module "terraform-aws-dynamodb" {
+  source  = "mineiros-io/dynamodb/aws"
+  version = "~> 0.6.0"
 
-
-resource "aws_dynamodb_table" "eartquakes" {
-  name = "eartquakes"
+  name         = "eartquakes"
+  hash_key     = "id"
   billing_mode = "PAY_PER_REQUEST"
-  attribute {
-    name = "id"
-    type = "S"
- }
-  hash_key = "id"
-}
 
+  attributes = {
+    id = "S"
+  }
+
+  replica_region_names = [var.global_table_replication_region]
+}

@@ -4,10 +4,16 @@ variable "aws_region" {
   default     = "eu-central-1"
 }
 
+variable "global_table_replication_region" {
+  description = "AWS region in which to replicate the table"
+  type        = string
+  default     = "us-east-1"
+}
+
 variable "my_ip" {
   description = "Your local IP adress"
   type = string
-  default = "217.81.217.242/32"
+  default = "217.80.23.80/32"
 }
 
 variable "account_id" {
@@ -21,4 +27,3 @@ variable "dynamodb_table_name" {
   type = string
   default = "eartquakes"
 }
-
