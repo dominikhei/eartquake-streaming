@@ -3,7 +3,6 @@ provider "aws" {
 }
 
 provider "tls" {
-
 }
 
 resource "tls_private_key" "this" {
@@ -71,6 +70,13 @@ resource "aws_security_group" "project_security_group" {
     protocol    = "tcp"
     cidr_blocks = [var.my_ip]
   }
+  ingress {
+   protocol         = "tcp"
+   from_port        = 8501
+   to_port          = 8501
+   cidr_blocks      = ["0.0.0.0/0"]
+   ipv6_cidr_blocks = ["::/0"]
+  }
  egress {
     from_port = 0
     to_port   = 0
@@ -120,7 +126,7 @@ resource "aws_instance" "kafka_server" {
     aws_security_group.project_security_group.id
   ]
 
-  iam_instance_profile = aws_iam_instance_profile.streaming_instance_profile.name
+  iam_instance_profile = aws_iam_instance_profile.kafka_streaming_instance_profile.name
 
   user_data = file("initiate.sh")
 }
@@ -185,8 +191,8 @@ resource "aws_iam_role_policy_attachment" "attach_policy" {
   role       = aws_iam_role.ec2_role.name
 }
 
-resource "aws_iam_instance_profile" "streaming_instance_profile" {
-  name = "streaming-instance-profile"
+resource "aws_iam_instance_profile" "kafka_streaming_instance_profile" {
+  name = "kafka_streaming_instance_profile"
   role = aws_iam_role.ec2_role.name
 }
 
@@ -203,4 +209,241 @@ module "terraform-aws-dynamodb" {
   }
 
   replica_region_names = [var.global_table_replication_region]
+}
+
+resource "aws_ecr_repository" "frontend_repository" {
+  name = "earthquake-frontend"
+}
+
+resource "null_resource" "docker_packaging" {
+    provisioner "local-exec" {
+        command = <<EOF
+            aws ecr get-login-password --region ${var.aws_region} | docker login --username AWS --password-stdin ${var.account_id}.dkr.ecr.${var.aws_region}.amazonaws.com
+            docker build -t earthquake_frontend:latest ./frontend
+            docker tag earthquake_frontend:latest ${aws_ecr_repository.frontend_repository.repository_url}:latest
+            docker push ${aws_ecr_repository.frontend_repository.repository_url}:latest
+        EOF
+    }
+
+    depends_on = [
+        aws_ecr_repository.frontend_repository,
+    ]
+}
+
+resource "aws_iam_policy" "dynamodb_policy_read_only" {
+  name        = "dynamo-policy-read-only"
+  description = "Allows read and write access to a specific DynamoDB table"
+  
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "dynamodb:DescribeTable",
+          "dynamodb:ListTables",
+          "dynamodb:GetItem",
+          "dynamodb:Scan",
+          "dynamodb:Query",
+        ]
+        Effect   = "Allow"
+        Resource = "arn:aws:dynamodb:${var.aws_region}:${var.account_id}:table/eartquakes"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role" "ecs_role" {
+  name = "ecs_role"
+  assume_role_policy = jsonencode({
+    Version: "2012-10-17",
+    Statement: [
+    {
+      Effect: "Allow",
+      Principal: {
+        Service: "ecs-tasks.amazonaws.com"
+      },
+      Action: "sts:AssumeRole"
+    }
+  ]
+  })
+
+}
+
+resource "aws_iam_role_policy_attachment" "attach_db_policy" {
+  policy_arn = aws_iam_policy.dynamodb_policy_read_only.arn
+  role       = aws_iam_role.ecs_role.name
+}
+
+resource "aws_iam_role" "ecs_execution_role" {
+  name = "MyEcsExecutionRole"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        },
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_execution_attachment" {
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+  role       = aws_iam_role.ecs_execution_role.name
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_cw_attachment" {
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchFullAccess"
+  role       = aws_iam_role.ecs_execution_role.name
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_sm_attachment" {
+  policy_arn = "arn:aws:iam::aws:policy/SecretsManagerReadWrite"
+  role       = aws_iam_role.ecs_execution_role.name
+}
+
+resource "aws_subnet" "public" {
+  vpc_id                  = aws_vpc.seismic-project-vpc.id
+  cidr_block              = "10.0.2.0/24"
+  availability_zone       = "${var.aws_region}a"
+  map_public_ip_on_launch = true
+  tags = {
+    Name = "frontend-subnet"
+  }
+}
+
+resource "aws_subnet" "public2" {
+  vpc_id                  = aws_vpc.seismic-project-vpc.id
+  cidr_block              = "10.0.3.0/24"
+  availability_zone       = "${var.aws_region}b"
+  map_public_ip_on_launch = true
+  tags = {
+    Name = "frontend-subnet-2"
+  }
+}
+
+resource "aws_security_group" "alb" {
+  name   = "load-balancer-sg"
+  vpc_id = aws_vpc.seismic-project-vpc.id  
+ 
+  ingress {
+   protocol         = "tcp"
+   from_port        = 80
+   to_port          = 80
+   cidr_blocks      = ["0.0.0.0/0"]
+   ipv6_cidr_blocks = ["::/0"]
+  }
+ 
+  egress {
+   protocol         = "-1"
+   from_port        = 0
+   to_port          = 0
+   cidr_blocks      = ["0.0.0.0/0"]
+   ipv6_cidr_blocks = ["::/0"]
+  }
+}
+
+resource "aws_lb" "main" {
+  name               = "frontend-lb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.alb.id]
+  subnets            = [aws_subnet.public.id, aws_subnet.public2.id]
+ 
+  enable_deletion_protection = false
+}
+ 
+resource "aws_alb_target_group" "main" {
+  name        = "frontend-lb-tg"
+  port        = 80
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.seismic-project-vpc.id
+  target_type = "ip"
+ 
+}
+
+resource "aws_alb_listener" "http" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = 80
+  protocol          = "HTTP"
+ 
+  default_action {
+    target_group_arn = aws_alb_target_group.main.arn
+    type             = "forward"
+  }
+}
+
+resource "aws_appautoscaling_target" "ecs_target" {
+  max_capacity       = 2
+  min_capacity       = 1
+  resource_id        = "service/${aws_ecs_cluster.seismic_cluster.name}/${aws_ecs_service.main.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+}
+
+resource "aws_appautoscaling_policy" "ecs_policy_memory" {
+  name               = "memory-autoscaling"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.ecs_target.resource_id
+  scalable_dimension = aws_appautoscaling_target.ecs_target.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.ecs_target.service_namespace
+ 
+  target_tracking_scaling_policy_configuration {
+   predefined_metric_specification {
+     predefined_metric_type = "ECSServiceAverageMemoryUtilization"
+   }
+   target_value       = 90
+  }
+}
+
+resource "aws_ecs_cluster" "seismic_cluster" {
+  name = "seismic-ecs-cluster"
+}
+
+resource "aws_ecs_task_definition" "earthquake_frontend_task" {
+  family                   = "frontend"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = 256
+  memory                   = 512
+  execution_role_arn       = aws_iam_role.ecs_execution_role.arn
+  task_role_arn            = aws_iam_role.ecs_role.arn
+  container_definitions = jsonencode([{
+   name        = "frontend-container"
+   image       = "${var.account_id}.dkr.ecr.${var.aws_region}.amazonaws.com/earthquake-frontend:latest"
+   essential   = true
+   network_mode = "awsvpc"
+   portMappings = [{
+     protocol      = "tcp"
+     containerPort = 8501
+     hostPort      = 8501
+    }]
+  }])
+}
+
+resource "aws_ecs_service" "main" {
+ name                               = "earthquake-frontend-service"
+ cluster                            = aws_ecs_cluster.seismic_cluster.id
+ task_definition                    = aws_ecs_task_definition.earthquake_frontend_task.arn
+ launch_type                        = "FARGATE"
+ scheduling_strategy                = "REPLICA"
+ 
+ network_configuration {
+   security_groups  = [aws_security_group.project_security_group.id]
+   subnets          = [aws_subnet.seismic-subnet.id]
+   assign_public_ip = true
+ }
+ 
+ load_balancer {
+   target_group_arn = aws_alb_target_group.main.arn
+   container_name   = "frontend-container"
+   container_port   = 8501
+ }
+ depends_on = [
+    aws_alb_target_group.main
+ ]
 }
