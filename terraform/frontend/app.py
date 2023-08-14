@@ -28,6 +28,7 @@ values = st.slider('Select a range of magnitudes, you want to display',1.0, 10.0
 
 def generate_map():
     eq = Earthquakes()
+    eq.pull_data()
 
     ######## TO BE ALTERED FOR PRODUCTION
     eq.pulled_data = [{'id': 'e73979a9-f7aa-4b90-9a68-493146537687', 

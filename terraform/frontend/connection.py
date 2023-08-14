@@ -17,7 +17,7 @@ def scan_table(table_name : str):
     
     try:
         table = dynamodb.Table(table_name)
-        response = table.scan(FilterExpression=Attr('data.date').eq('2023-07-16'))
+        response = table.scan(FilterExpression=Attr('data.date').eq(current_date))
         return response 
     
     except ClientError as e:
