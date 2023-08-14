@@ -2,9 +2,20 @@
 
 With this project I am building a distributed system to display earthquakes in real time on a map, accessible via your browser. The front end service has an upstream loadbalancer to scale out if needed as well as a Firewall to protect the service. Data is streamed from an [external service by the EMSC](https://www.seismicportal.eu/realtime.html) using Springboot Kafka in a Docker Compose setup. The whole AWS infrastructure is created and configured using Terraform. All configurations and relevant role priviledges will be preconfigured, such that you can simply host the application with one command. In addition to that I have implemented logging of the backend using promtail, loki and grafana.  
 
+All roles within this project are assumed by services, such that no credentials are used and I have followed the principle of least privileges. 
+
+### Structure 
+
+- [Process walk through](#process-walk-through) 
+- [Architecture](#architecture)
+- [How to run the project](#how-to-run-the-project)
+- [Future outlook](#future-outlook)
+
 ### Process walk through 
 
+Once a new event occurs, the Kafka producer will register it and send it to Kafka. The Consumer then reads it and inserts the event into DynamoDB. All logs produced during this process, are collected by promtail and forwarded to loki on another EC2 instance. They are visualized using a Grafana Dashboard to Monitor this part of the system. 
 
+When a user makes a request to the frontend service, an ELB application load balancer routes it to one of the frontend service containers, which are in a private subnet. These containers are deployed via AWS Fargate and read the events from DynamoDB. 
 
 ### Architecture
 
@@ -57,3 +68,35 @@ __Firewall__
 
 
 
+### How to run the project
+
+Since I have already preconfigured everything, you only need a few things and undergo little effort to create the project. 
+__Note:__ This project will lead to cost on AWS, I am by no means repsonsible for any charges on your account. 
+
+You need to have terraform installed, and authenticated with AWS as wel as beeing able to execute shell scripts. Last, the ability to build docker containers is a requirement too. 
+
+Once that has been made sure, you have to replace some variables in [var.tf](/terraform/var.tf). They are:
+
+- aws_region: The region in which you want your services to sit
+- global_table_replication_region: The region across which the global table should be replicated 
+- my_ip: Your host machines IP address 
+- account_id: Your AWS account id 
+
+Afterfards you need to start the docker daemon, navigate into the terraform folder and run:
+```bash
+terraform init 
+```
+
+```bash
+terraform apply 
+```
+
+The whole project including configurations will now be created for you. 
+
+### Future outlook 
+
+These are some topics, which could be added next:
+
+- TLS encryption of traffic 
+- replicating the frontend service across regions 
+- Kubernetes deployment 
