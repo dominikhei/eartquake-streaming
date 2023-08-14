@@ -30,14 +30,6 @@ def generate_map():
     eq = Earthquakes()
     eq.pull_data()
 
-    ######## TO BE ALTERED FOR PRODUCTION
-    eq.pulled_data = [{'id': 'e73979a9-f7aa-4b90-9a68-493146537687', 
-                       'data': {'date': '2023-07-22', 'depth': 69, 'latitude': -29.61, 'magnitude': 2.9, 
-                                'time': '08:21:00', 'uuid': 'e73979a9-f7aa-4b90-9a68-493146537687', 'longitude': -71.29}},
-                                {'id': 'e73979a9-f7aa-4b90-9a68-493146537687', 
-                       'data': {'date': '2023-07-22', 'depth': 69, 'latitude': 0, 'magnitude': 9, 
-                                'time': '08:21:00', 'uuid': 'e73979a9-f7aa-4b90-9a68-493146537687', 'longitude': 0}}]
-    ######## END - TO BE ALTERED FOR PRODUCTION
     filtered_data = [entry for entry in eq.pulled_data if values[0] <= entry['data']['magnitude'] <= values[1]]
     eq.pulled_data = filtered_data
 
