@@ -33,7 +33,7 @@ The streaming application sits on an EC2 t2-large machine and is defined using d
 __Consumer & Producer__
 
 Both Consumer and Producer are implemented in Java with SpringBoot. 
-The Producer has an open websocket, that listens for new events (an event is an earthquake that has occured). The event is turned into a custom JSONObject with the relevant keys for the scope of this application. The Json is then serealized using a custom serealizer to send it to Kafka. In the scope of Kafka serealization refers turning an object into a stream of bytes that can be transmitted into the queue. 
+The Producer has an open websocket, that listens for new events (an event is an earthquake that has occured). The event is turned into a custom JSONObject with the relevant keys for the scope of this application. The Json is then serealized using a custom serealizer to send it to Kafka. In the scope of Kafka, serealization refers turning an object into a stream of bytes that can be transmitted into the queue. 
 
 The Consumer reads the events that have arrived and deserealizes it into a JSONObject. In the next step it is written to DynamoDB, a NoSql Key-Value store on AWS, using the AWS SDK. For security reasons I have opted against using credentials, but instead assuming the role of the underlying EC2 instance, which has just the required least priviledges, i.e is allowed to write to exactly this table. 
 
@@ -54,11 +54,14 @@ Here is example Grafana dashboard where I have filtered the logs of the producer
 __Database and regional replication__
 
 As a database I have used DynamoDB. DynamoDB is a key-value store on AWS that uses 3 storage nodes across which data is partitioned according to the hash value of a private key. Moreover the WAL is backuped on S3. By handling all of that internaly I can focus on other parts of the app. Moreover DynamoDB  has the option of global tables, where a table is replicated across multiple regions. If the frontend service gets accessed from all over the world, global tables can reduce latency by a lot. In addition to that global tables make writing to replicated tables and keeping consistency across regions very simple, by handling all of that within AWS.
-You can set the regions in which the table should be replicated within the [var.tf](./terraform/var.tf) file under global_table_replication_region. Terraform will automatically create the table within your region and the chosen replicated region.
+You can set the regions in which the table should be replicated within the [var.tf](./terraform/var.tf) file under global_table_replication_region. Terraform will automatically create the table within your region and the chosen replication region.
 
 __Frontend service__
 
 The Frontend is a containerized streamlit app. Once you run a terraform apply command, the image is automatically built and uploaded to AWS Ecr. A Fargate task pulls the image from there. The frontend can get the eartquake data from DynamoDb using the assumed role by Fargate. 
+
+*This is how the Dashboard currently looks like:*
+![](.images/eartquake_frontend.png)
 
 __Load balancing & scaling__
 
@@ -71,14 +74,14 @@ __Firewall__
 ### How to run the project
 
 Since I have already preconfigured everything, you only need a few things and undergo little effort to create the project. 
-__Note:__ This project will lead to cost on AWS, I am by no means repsonsible for any charges on your account. 
+__Note:__ This project will lead to costs on AWS, I am by no means repsonsible for any charges on your account. 
 
 You need to have terraform installed, and authenticated with AWS as wel as beeing able to execute shell scripts. Last, the ability to build docker containers is a requirement too. 
 
 Once that has been made sure, you have to replace some variables in [var.tf](/terraform/var.tf). They are:
 
 - aws_region: The region in which you want your services to sit
-- global_table_replication_region: The region across which the global table should be replicated 
+- global_table_replication_region: The region in which the global table should be replicated 
 - my_ip: Your host machines IP address 
 - account_id: Your AWS account id 
 
