@@ -74,8 +74,7 @@ resource "aws_security_group" "project_security_group" {
    protocol         = "tcp"
    from_port        = 8501
    to_port          = 8501
-   cidr_blocks      = ["0.0.0.0/0"]
-   ipv6_cidr_blocks = ["::/0"]
+   security_groups = [aws_security_group.alb.id]
   }
  egress {
     from_port = 0
@@ -91,25 +90,49 @@ resource "aws_internet_gateway" "seismic_internet_gateway" {
   vpc_id = aws_vpc.seismic-project-vpc.id
 }
 
-resource "aws_route_table" "seismic_route_table" {
-  vpc_id = aws_vpc.seismic-project-vpc.id  
-
-  route {
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.seismic-project-vpc.id
+    route {
     cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.seismic_internet_gateway.id
+    gateway_id             = aws_internet_gateway.seismic_internet_gateway.id
   }
 }
 
-resource "aws_route" "route" {
-  route_table_id         = aws_route_table.seismic_route_table.id
-  destination_cidr_block = "0.0.0.0/0"
-  gateway_id             = aws_internet_gateway.seismic_internet_gateway.id
+resource "aws_route_table_association" "public1" {
+  subnet_id      = aws_subnet.public1.id
+  route_table_id = aws_route_table.public.id
 }
 
-resource "aws_route_table_association" "seismic_route_table_association" {
-  subnet_id      = aws_subnet.seismic-subnet.id
-  route_table_id = aws_route_table.seismic_route_table.id
+resource "aws_route_table_association" "public" {
+  subnet_id      = aws_subnet.public2.id
+  route_table_id = aws_route_table.public.id
 }
+
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.seismic-project-vpc.id
+}
+
+resource "aws_route_table_association" "private" {
+  subnet_id      = aws_subnet.seismic-subnet.id
+  route_table_id = aws_route_table.private.id
+}
+
+resource "aws_route" "nat_gateway_route" {
+  route_table_id         = aws_route_table.private.id
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id         = aws_nat_gateway.nat_gateway.id
+}
+ 
+resource "aws_nat_gateway" "nat_gateway" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = aws_subnet.public1.id
+  depends_on    = [aws_internet_gateway.seismic_internet_gateway]
+}
+ 
+resource "aws_eip" "nat" {
+  vpc = true
+}
+
 
 resource "aws_instance" "kafka_server" {
   ami           = "ami-04e601abe3e1a910f" // eu-central-1
@@ -306,7 +329,7 @@ resource "aws_iam_role_policy_attachment" "ecs_sm_attachment" {
   role       = aws_iam_role.ecs_execution_role.name
 }
 
-resource "aws_subnet" "public" {
+resource "aws_subnet" "public1" {
   vpc_id                  = aws_vpc.seismic-project-vpc.id
   cidr_block              = "10.0.2.0/24"
   availability_zone       = "${var.aws_region}a"
@@ -352,7 +375,7 @@ resource "aws_lb" "main" {
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
-  subnets            = [aws_subnet.public.id, aws_subnet.public2.id]
+  subnets            = [aws_subnet.public1.id, aws_subnet.public2.id]
  
   enable_deletion_protection = false
 }
