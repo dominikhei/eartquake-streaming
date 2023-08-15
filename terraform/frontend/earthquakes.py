@@ -2,6 +2,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.io as pio
 from plotly.graph_objects import Figure
+import json 
 
 import connection
 
@@ -45,10 +46,13 @@ class Earthquakes:
             raise TypeError(f"{self.__class__.__name__}.__map only supports plotly Figure objects")
 
 
-    def pull_data(self, table_name: str = "eartquake"):
+    def pull_data(self, table_name: str = "eartquakes"):
         pulled = connection.scan_table(table_name)
         try:
-            self.pulled_data(pulled)
+            response = connection.scan_table(table_name)
+            pulled = response['Items']
+            self.pulled_data = pulled
+            print(self.pulled_data)
             return pulled
         except TypeError as error:
             raise Exception("Dynamo did not return the correct data type - " + str(error))
@@ -58,9 +62,20 @@ class Earthquakes:
         data = pd.DataFrame(columns=["id", "depth", "latitude", "magnitude", "time", "uuid", "longitude"])
         for index, entry in enumerate(input_data):
             data.loc[index, "id"] = entry["id"]
-            details = entry["data"]
-            for key in details.keys():
-                data.loc[index, key] = details[key]
+            details = json.loads(entry["data"])
+
+            transformed_data = {
+                "id": details["uuid"]["S"],
+                "depth": float(details["depth"]["N"]),
+                "latitude": float(details["latitude"]["N"]),
+                "magnitude": float(details["magnitude"]["N"]),
+                "time": details["time"]["S"],
+                "uuid": details["uuid"]["S"],
+                "longitude": float(details["longitude"]["N"]),
+            }
+            print(transformed_data)
+
+            data.loc[index] = transformed_data
         return data
 
     def transform_data(self) -> pd.DataFrame:
@@ -91,10 +106,3 @@ class Earthquakes:
         fig = self.__generate_core(self.data)
         self.map = fig
         return fig        
-
-
-    
-
-    
-    
-        

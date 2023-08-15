@@ -23,15 +23,9 @@ st.markdown(
     }
         </style>
         """, unsafe_allow_html=True)
-values = st.slider('Select a range of magnitudes, you want to display',1.0, 10.0, (1.0, 10.0))
-
 
 def generate_map():
     eq = Earthquakes()
-    eq.pull_data()
-
-    filtered_data = [entry for entry in eq.pulled_data if values[0] <= entry['data']['magnitude'] <= values[1]]
-    eq.pulled_data = filtered_data
 
     return eq.generate_map()
 
