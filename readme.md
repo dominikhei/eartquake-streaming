@@ -1,6 +1,6 @@
 ### Introduction 
 
-With this project I am building a distributed system to display earthquakes in real time on a map, accessible via your browser. The front end service has an upstream loadbalancer to scale out if needed as well as a Firewall to protect the service. Data is streamed from an [external service by the EMSC](https://www.seismicportal.eu/realtime.html) using Springboot Kafka in a Docker Compose setup. The whole AWS infrastructure is created and configured using Terraform. All configurations and relevant role priviledges will be preconfigured, such that you can simply host the application with one command. In addition to that I have implemented logging of the backend using promtail, loki and grafana.  
+With this project I am building a distributed system to display earthquakes in real time on a map, accessible via your browser. The front end service has an upstream loadbalancer to scale out if needed. Data is streamed from an [external service by the EMSC](https://www.seismicportal.eu/realtime.html) using Springboot Kafka in a Docker Compose setup. The whole AWS infrastructure is created and configured using Terraform. All configurations and relevant role priviledges will be preconfigured, such that you can simply host the application with one command. In addition to that I have implemented logging of the backend using promtail, loki and grafana.  
 
 All roles within this project are assumed by services, such that no credentials are used and I have followed the principle of least privileges. 
 
@@ -15,7 +15,7 @@ All roles within this project are assumed by services, such that no credentials 
 
 Once a new event occurs, the Kafka producer will register it and send it to Kafka. The Consumer then reads it and inserts the event into DynamoDB. All logs produced during this process, are collected by promtail and forwarded to loki on another EC2 instance. They are visualized using a Grafana Dashboard to Monitor this part of the system. 
 
-When a user makes a request to the frontend service, an ELB application load balancer routes it to one of the frontend service containers, which are in a private subnet. These containers are deployed via AWS Fargate and read the events from DynamoDB. 
+When a user makes a request to the frontend service, an ELB application load balancer routes it to one of the frontend service containers, which are in a private subnet. These containers are deployed via AWS Fargate, read the events from DynamoDB and display them on an interactive map. 
 
 ### Architecture
 
@@ -65,10 +65,7 @@ The Frontend is a containerized streamlit app. Once you run a terraform apply co
 
 __Load balancing & scaling__
 
-I was thinking of using AWS AppRunner for running the frontend in a simple way. However when comparing cost, it became clear that in a production environment where the frontend scales to multiple containers, the implementation with an Elb LoadBalancer and fargate will become way cheaper. The application load balancer redirects all HTTP traffic to port 8501 of the frontend container. It has a rule, that if 90% of the ram of a frontend container is used, it will scale out another one. Since this project is not intended for production usage, the maximum amount of running containers is 2. Currently all created containers will be within one AZ. However there is the possibility fo further advance this project and scale out in different regions depending on traffic.  
-
-__Firewall__
-
+I was thinking of using AWS AppRunner for running the frontend in a simple way. However when comparing cost, it became clear that in a production environment where the frontend scales to multiple containers, the implementation with an Elb LoadBalancer and fargate will become way cheaper. The application load balancer redirects all HTTP traffic to port 8501 of the frontend container. It has a rule, that if 90% of the ram of a frontend container is used, it will scale out another one. Since this project is not intended for production usage, the maximum amount of running containers is 2. Currently all created containers will be within one AZ. However there is the possibility fo further advance this project and scale out in different regions depending on traffic. The DynamoDb table will already be replicated across a region, you can choose.
 
 __Network__
 
@@ -83,7 +80,7 @@ Since the logging service is on a different EC2-machine than the Kafka cluster (
 Since I have already preconfigured everything, you only need a few things and undergo little effort to create the project. 
 __Note:__ This project will lead to costs on AWS, I am by no means repsonsible for any charges on your account. 
 
-You need to have terraform installed, and authenticated with AWS as wel as beeing able to execute shell scripts. Last, the ability to build docker containers is a requirement too. 
+You need to have Terraform installed, and authenticated with AWS as wel as beeing able to execute shell scripts. Last, the ability to build docker containers is a requirement too. 
 
 Once that has been made sure, you have to replace some variables in [var.tf](/terraform/var.tf). They are:
 
@@ -108,5 +105,6 @@ The whole project including configurations will now be created for you. Terrafor
 These are some topics, which could be added next:
 
 - TLS encryption of traffic 
-- replicating the frontend service across regions 
+- Firewall
+- Replicating the frontend service across regions 
 - Kubernetes deployment 
