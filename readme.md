@@ -70,6 +70,13 @@ I was thinking of using AWS AppRunner for running the frontend in a simple way. 
 __Firewall__
 
 
+__Network__
+
+The Kafka, logging and Fargate services reside in their own private subnet with an attatched nat gateway The security group associated with these servies allows inbound traffic from your own ip on port 3000, to access the Grafana dashboard. Port 8501 is open for traffic from the load balancers security group, since request will be rerouted from the load balancer to fargate on port 8501. The nat gateway is needed to send a response back to the requesting one. 
+As already mentioned the load balancer sits in it's own public subnet and has an associated security group allowing inbound HTTP traffic from port 80. 
+
+Since the logging service is on a different EC2-machine than the Kafka cluster (to seperate services), logs need to be sent over the network. I have assigned a static, private ip address to the logging instance and since both servers are within the same private subnet, it can be used for communication. 
+
 
 ### How to run the project
 
@@ -94,7 +101,7 @@ terraform init
 terraform apply 
 ```
 
-The whole project including configurations will now be created for you. 
+The whole project including configurations will now be created for you. Terraform does not only create AWS ressources for you, but will also request the docker daemon to build the frontend image and push it to Ecr. In addition to that I have created two scripts to [initiate services on the logging server](terraform/initiate_logging.sh) and to [initiate services on the Kafka server](terraform/initiate.sh), which will install all required dependencies on them and start the required containers with their respective dependencies.
 
 ### Future outlook 
 
