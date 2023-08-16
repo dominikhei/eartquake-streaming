@@ -1,7 +1,7 @@
 version: '2'
 services:
   zookeeper:
-    image: confluentinc/cp-zookeeper:latest
+    image: confluentinc/cp-zookeeper:7.4.1
     restart: unless-stopped
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
@@ -13,7 +13,7 @@ services:
       logging_jobname: "containerlogs"
 
   promtail:
-    image: grafana/promtail:latest 
+    image: grafana/promtail:main 
     restart: unless-stopped
     hostname: promtail
     ports:
@@ -26,7 +26,7 @@ services:
 
   kafka:
     hostname: kafka
-    image: confluentinc/cp-kafka:latest
+    image: confluentinc/cp-kafka:7.4.1
     restart: unless-stopped
     labels:
       logging: "promtail"

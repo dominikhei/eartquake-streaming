@@ -2,7 +2,7 @@ version: '2'
 services: 
   loki:
     hostname: loki
-    image: grafana/loki:latest
+    image: grafana/loki:2.8.4
     restart: unless-stopped
     ports:
       - "3100:3100"
@@ -11,7 +11,7 @@ services:
       - ./volumes/loki/etc:/etc/loki
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:10.0.3
     restart: unless-stopped
     ports:
       - "3000:3000"
