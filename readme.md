@@ -67,13 +67,6 @@ __Load balancing & scaling__
 
 I was thinking of using AWS AppRunner for running the frontend in a simple way. However when comparing cost, it became clear that in a production environment where the frontend scales to multiple containers, the implementation with an Elb LoadBalancer and fargate will become way cheaper. The application load balancer redirects all HTTP traffic to port 8501 of the frontend container. It has a rule, that if 90% of the ram of a frontend container is used, it will scale out another one. Since this project is not intended for production usage, the maximum amount of running containers is 2. Currently all created containers will be within one AZ. However there is the possibility fo further advance this project and scale out in different regions depending on traffic. The DynamoDb table will already be replicated across a region, you can choose.
 
-__Network__
-
-The Kafka, logging and Fargate services reside in their own private subnet with an attatched nat gateway The security group associated with these servies allows inbound traffic from your own ip on port 3000, to access the Grafana dashboard. Port 8501 is open for traffic from the load balancers security group, since request will be rerouted from the load balancer to fargate on port 8501. The nat gateway is needed to send a response back to the requesting one. 
-As already mentioned the load balancer sits in it's own public subnet and has an associated security group allowing inbound HTTP traffic from port 80. 
-
-Since the logging service is on a different EC2-machine than the Kafka cluster (to seperate services), logs need to be sent over the network. I have assigned a static, private ip address to the logging instance and since both servers are within the same private subnet, it can be used for communication. 
-
 
 ### How to run the project
 
