@@ -45,7 +45,7 @@ resource "aws_vpc" "seismic-project-vpc" {
   }
 }
 
-resource "aws_subnet" "seismic-subnet" {
+resource "aws_subnet" "streaming-subnet" {
   vpc_id     = aws_vpc.seismic-project-vpc.id
   cidr_block = "10.0.1.0/24"
   availability_zone = "${var.aws_region}a"
@@ -53,6 +53,42 @@ resource "aws_subnet" "seismic-subnet" {
   tags = {
     Name = "seismic-subnet"
   }
+}
+
+resource "aws_subnet" "seismic-subnet" {
+  vpc_id     = aws_vpc.seismic-project-vpc.id
+  cidr_block = "10.0.4.0/24"
+  availability_zone = "${var.aws_region}a"
+
+  tags = {
+    Name = "seismic-subnet"
+  }
+}
+
+resource "aws_security_group" "streaming_security_group" {
+  name_prefix = "streaming-security-group"
+
+ ingress {
+    from_port   = 3000
+    to_port     = 3000
+    protocol    = "tcp"
+    cidr_blocks = [var.my_ip]
+  }
+ ingress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    self = true
+  }
+
+ egress {
+    from_port = 0
+    to_port   = 0
+    protocol  = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  vpc_id = aws_vpc.seismic-project-vpc.id
 }
 
 resource "aws_security_group" "project_security_group" {
@@ -108,6 +144,11 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
+resource "aws_route_table_association" "public-streaming" {
+  subnet_id      = aws_subnet.streaming-subnet.id
+  route_table_id = aws_route_table.public.id
+}
+
 resource "aws_route_table" "private" {
   vpc_id = aws_vpc.seismic-project-vpc.id
 }
@@ -137,7 +178,7 @@ resource "aws_eip" "nat" {
 resource "aws_instance" "kafka_server" {
   ami           = "ami-04e601abe3e1a910f" // eu-central-1
   instance_type = "t2.large"
-  subnet_id     = aws_subnet.seismic-subnet.id
+  subnet_id     = aws_subnet.streaming-subnet.id
   key_name= "kafka-server-key"
   associate_public_ip_address = true
 
@@ -146,7 +187,7 @@ resource "aws_instance" "kafka_server" {
   }
 
   vpc_security_group_ids = [
-    aws_security_group.project_security_group.id
+    aws_security_group.streaming_security_group.id
   ]
 
   iam_instance_profile = aws_iam_instance_profile.kafka_streaming_instance_profile.name
@@ -158,11 +199,11 @@ resource "aws_instance" "logging" {
     ami = "ami-04e601abe3e1a910f" // eu-central-1
     instance_type = "t2.small"
     private_ip = "10.0.1.10"
-    subnet_id     = aws_subnet.seismic-subnet.id
+    subnet_id     = aws_subnet.streaming-subnet.id
     associate_public_ip_address = true
     key_name= "logging-server-key"
     vpc_security_group_ids = [
-    aws_security_group.project_security_group.id
+    aws_security_group.streaming_security_group.id
   ]
   tags = {
     Name = "monitoring-server"
