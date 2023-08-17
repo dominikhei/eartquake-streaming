@@ -13,13 +13,13 @@ variable "global_table_replication_region" {
 variable "my_ip" {
   description = "Your local IP adress"
   type = string
-  default = "217.80.23.80/32"
+  default = "__insert__here__"
 }
 
 variable "account_id" {
   description = "Your AWS account ID"
   type = string
-  default = "000756383174"
+  default = "__insert__here__"
 }
 
 variable "dynamodb_table_name" {

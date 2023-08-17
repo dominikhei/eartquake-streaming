@@ -2,7 +2,7 @@
 
 With this project I am building a distributed system to display earthquakes in real time on a map, accessible via your browser. The front end service has an upstream loadbalancer to scale out if needed. Data is streamed from an [external service by the EMSC](https://www.seismicportal.eu/realtime.html) using Springboot Kafka in a Docker Compose setup. The whole AWS infrastructure is created and configured using Terraform. All configurations and relevant role priviledges will be preconfigured, such that you can simply host the application with one command. In addition to that I have implemented logging of the backend using promtail, loki and grafana.  
 
-All roles within this project are assumed by services, such that no credentials are used and I have followed the principle of least privileges. 
+All roles within this project are assumed by services, such that no credentials are used and I have followed the principle of least privileges. The services sit in different subnets with their own security groups, which allow just the required amount of inbound traffic.
 
 ### Structure 
 
