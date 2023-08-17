@@ -20,6 +20,7 @@ When a user makes a request to the frontend service, an ELB application load bal
 ### Architecture
 
 ![](./.images/architecture.png)
+*Note: I have left nat- / internet gateways and route tables out of diagram, for simplification reasons*
 
 __Kafka__ 
 
