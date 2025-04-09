@@ -72,7 +72,7 @@ The Frontend is a containerized streamlit app. Once you run a terraform apply co
 
 __Load balancing & scaling__
 
-I was thinking of using AWS AppRunner for running the frontend in a simple way. However when comparing cost, it became clear that in a production environment where the frontend scales to multiple containers, the implementation with an ALB LoadBalancer and Fargate will become way cheaper. The application load balancer redirects all HTTP traffic to port 8501 of the frontend container. It has a rule, that if 90% of the ram of a frontend container is used, it will scale out another one. Since this project is not intended for production usage, the maximum amount of running containers is 2. Currently all created containers will be within one AZ. However there is the possibility fo further advance this project and scale out in different regions depending on traffic. The DynamoDb table will already be replicated across a region, you can choose. The load balancer has a WAF firewall, which protects from dos attacks by allowing only 500 requests from the same ip-adress within a 5 minute period. This also serves as cost protection for regular requests. 
+I was thinking of using AWS AppRunner for running the frontend in a simple way. However when comparing cost, it became clear that in a production environment where the frontend scales to multiple containers, the implementation with an ALB LoadBalancer and Fargate will become way cheaper. The application load balancer redirects all HTTP traffic to port 8501 of the frontend container. It has a rule, that if 90% of the ram of a frontend container is used, it will scale out another one. Since this project is not intended for production usage, the maximum amount of running containers is set to 2 via the autoscaling group. Currently all created containers will be within one AZ. However there is the possibility fo further advance this project and scale out in different regions depending on traffic. The DynamoDb table will already be replicated across a region, you can choose. The load balancer has a WAF firewall, which protects from dos attacks by allowing only 500 requests from the same ip-adress within a 5 minute period. This also serves as cost protection for regular requests. 
 
 ### How to run the project
 
@@ -104,6 +104,8 @@ The whole project including configurations will now be created for you. Terrafor
 These are some topics, which could be added next:
 
 - TLS encryption of traffic 
-- Firewall
-- Replicating the frontend service across regions 
+- HTTPS Load Balancer
+- Exporting DynamoDB Data to S3
+- Place Kafka & Grafana Instance in a private Subnet
+- DAX Clusters
 - Kubernetes deployment 
