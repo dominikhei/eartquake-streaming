@@ -28,7 +28,7 @@ Apache Kafka is a distributed streaming platform which makes it easy to integrat
 
 The Kafka producer extracts the new earthquakes using a websocket, creates a JSONObject and serealizes them using a custom serealizer. Once they are pushed to the kafka topic the consumer pulls them and deserealizes them again using a custom deserealizer, which turns them back into a JSONObject. 
 
-The streaming application sits on an EC2 t2-large machine and is defined using docker compose. All services within the Kafka cluster sit in Docker containers. 
+The streaming application sits on an EC2 t2-large machine and is defined using docker compose. All services within the Kafka cluster sit in Docker containers. One must note that Kafka is defiently overengineered for this use-case. Neither its throughput, latency or decoupling are interesting here, as we could stream the earthquakes from the WebSocket to the DynamoDB Database in much simpler fashion. However I wanted to build my own custom consumers and producers, which is why I used it here. 
 
 
 __Consumer & Producer__
@@ -41,6 +41,8 @@ The Consumer reads the events that have arrived and deserealizes it into a JSONO
 *This is a detailed visual representation of the Kafka and logging setup:*
 ![](./.images/ec2_services.png)
 
+In a production environment, one would also seperate consumer / producers one level further and place them on different instances. 
+
 __Logging__ 
 
 I chose to seperate the streaming backend and logging microservice on different Ec2-Instances. Since I am using the private IP-adress to send logs and both instances are within the same availability zone, __data transfer is free__. 
@@ -52,10 +54,14 @@ You can access Grafana from your machine using the logging-EC2 instances IP adre
 Here is example Grafana dashboard where I have filtered the logs of the producer container for uuid, meaning any new record that has been sent to Kafka is displayed:
 ![](./.images/grafana.png)
 
+I opted against using CloudWatch, to use as many open-souce frameworks as possible and thus avoid a vendor lock-in. 
+
 __Database and regional replication__
 
 As a database I have used DynamoDB. DynamoDB is a key-value store on AWS that uses 3 storage nodes across which data is partitioned according to the hash value of a private key. Moreover the WAL is backuped on S3. By handling all of that internaly I can focus on other parts of the app. Moreover DynamoDB  has the option of global tables, where a table is replicated across multiple regions. If the frontend service gets accessed from all over the world, global tables can reduce latency by a lot. In addition to that global tables make writing to replicated tables and keeping consistency across regions very simple, by handling all of that within AWS.
 You can set the regions in which the table should be replicated within the [var.tf](./terraform/var.tf) file under global_table_replication_region. Terraform will automatically create the table within your region and the chosen replication region.
+
+The Kafka Consumer will write directly to DynamoDB. As a magnitude 1+ earthquake occurs roughly every 30 seconds, there will be very little writes on the DynamoDB table. If Latency would be an even greater concern with this application, one could also opt for DynamoDB DAX Clusters, but the read latency was sufficiently low in the tests.
 
 __Frontend service__
 
@@ -66,7 +72,7 @@ The Frontend is a containerized streamlit app. Once you run a terraform apply co
 
 __Load balancing & scaling__
 
-I was thinking of using AWS AppRunner for running the frontend in a simple way. However when comparing cost, it became clear that in a production environment where the frontend scales to multiple containers, the implementation with an Elb LoadBalancer and fargate will become way cheaper. The application load balancer redirects all HTTP traffic to port 8501 of the frontend container. It has a rule, that if 90% of the ram of a frontend container is used, it will scale out another one. Since this project is not intended for production usage, the maximum amount of running containers is 2. Currently all created containers will be within one AZ. However there is the possibility fo further advance this project and scale out in different regions depending on traffic. The DynamoDb table will already be replicated across a region, you can choose. The load balancer has a WAF firewall, which protects from dos attacks by allowing only 500 requests from the same ip-adress within a 5 minute period. This also serves as cost protection for regular requests. 
+I was thinking of using AWS AppRunner for running the frontend in a simple way. However when comparing cost, it became clear that in a production environment where the frontend scales to multiple containers, the implementation with an ALB LoadBalancer and Fargate will become way cheaper. The application load balancer redirects all HTTP traffic to port 8501 of the frontend container. It has a rule, that if 90% of the ram of a frontend container is used, it will scale out another one. Since this project is not intended for production usage, the maximum amount of running containers is 2. Currently all created containers will be within one AZ. However there is the possibility fo further advance this project and scale out in different regions depending on traffic. The DynamoDb table will already be replicated across a region, you can choose. The load balancer has a WAF firewall, which protects from dos attacks by allowing only 500 requests from the same ip-adress within a 5 minute period. This also serves as cost protection for regular requests. 
 
 ### How to run the project
 
