@@ -22,6 +22,8 @@ When a user makes a request to the frontend service, an ELB application load bal
 ![](./.images/architecture.png)
 *Note: I have left nat- / internet gateways and route tables out of the diagram, for simplification reasons*
 
+Adhering to security best practices, the kafka and logging server should be put in a private subnet, each with their own security group and access them through a bastiopn host or SSM. However for simplicity I have put them in a public subnet, accessible only from your local machines IP. 
+
 __Kafka__ 
 
 Apache Kafka is a distributed streaming platform which makes it easy to integrate various producers and consumers with each others. In theory kafka offers extremly high througput and easy scalability with relativly low latency.
