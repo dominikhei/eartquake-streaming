@@ -63,7 +63,14 @@ __Database and regional replication__
 As a database I have used DynamoDB. DynamoDB is a key-value store on AWS that uses 3 storage nodes across which data is partitioned according to the hash value of a private key. Moreover the WAL is backuped on S3. By handling all of that internaly I can focus on other parts of the app. Moreover DynamoDB  has the option of global tables, where a table is replicated across multiple regions. If the frontend service gets accessed from all over the world, global tables can reduce latency by a lot. In addition to that global tables make writing to replicated tables and keeping consistency across regions very simple, by handling all of that within AWS.
 You can set the regions in which the table should be replicated within the [var.tf](./terraform/var.tf) file under global_table_replication_region. Terraform will automatically create the table within your region and the chosen replication region.
 
-The Kafka Consumer will write directly to DynamoDB. As a magnitude 1+ earthquake occurs roughly every 30 seconds, there will be very little writes on the DynamoDB table. If Latency would be an even greater concern with this application, one could also opt for DynamoDB DAX Clusters, but the read latency was sufficiently low in the tests.
+The Kafka Consumer will write directly to DynamoDB. As a magnitude 1+ earthquake occurs roughly every 30 seconds, there will be very little writes on the DynamoDB table. 
+
+__DynamoDB Costs:__
+
+Based on my setup, the DynamoDB costs are very low and predictable. I write one new earthquake event every 30 seconds, which totals 2,880 writes per day. I serve around 40,000 read requests per day from users, as we have 10.000 users per day each staying ~ 4mins on the site (4 refreshes), each of whom loads the last 24 hours of data (about 2,880 items per request). Each write is small (typically under 1 KB), while each read loads a relatively large response (around 300–500 KB).
+
+Write costs (2,880 WCU/day) are roughly $0.001/day.
+Read costs (40,000 large queries/day) are the main driver. Assuming around 5 RCUs per query due to the response size, that adds up to ~200,000 RCUs/day, costing about $0.05/day.
 
 __Frontend service__
 
@@ -107,7 +114,8 @@ These are some topics, which could be added next:
 
 - TLS encryption of traffic 
 - HTTPS Load Balancer
-- Exporting DynamoDB Data to S3
+- Exporting DynamoDB Data to S3 (via lambda full export)
 - Place Kafka & Grafana Instance in a private Subnet
-- DAX Clusters
+- DAX Cluster
+- DynamoDB 24h TTL
 - Kubernetes deployment 
