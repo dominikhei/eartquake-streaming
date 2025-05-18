@@ -83,7 +83,7 @@ __Note:__ This project will lead to costs on AWS, I am by no means repsonsible f
 
 You need to have Terraform installed, and authenticated with AWS as wel as beeing able to execute shell scripts. Last, the ability to build docker containers is a requirement too. 
 
-Once that has been made sure, you have to replace some variables in [var.tf](/terraform/var.tf). They are:
+Once that has been made sure, you have to create a file called `prod.tfvars` and set some variables in it. They are:
 
 - aws_region: The region in which you want your services to sit
 - global_table_replication_region: The region in which the global table should be replicated 
@@ -96,7 +96,7 @@ terraform init
 ```
 
 ```bash
-terraform apply 
+terraform apply -var-file="prod.tfvars"
 ```
 
 The whole project including configurations will now be created for you. Terraform does not only create AWS ressources for you, but will also request the docker daemon to build the frontend image and push it to Ecr. In addition to that I have created two scripts to [initiate services on the logging server](terraform/initiate_logging.sh) and to [initiate services on the Kafka server](terraform/initiate.sh), which will install all required dependencies on them and start the required containers with their respective dependencies.
