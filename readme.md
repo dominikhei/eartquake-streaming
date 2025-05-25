@@ -8,7 +8,7 @@ All roles within this project are assumed by services, such that no credentials 
 
 - [Process walk through](#process-walk-through)
 - [Architecture](#architecture)
-- [How to run the project](#how-to-run-the-project)
+- [How to run the project](#cd-pipeline-building-the-project)
 - [Future outlook](#future-outlook)
 
 ### Process walk through
@@ -26,7 +26,7 @@ Adhering to security best practices, the kafka and logging server should be put 
 
 __Kafka__
 
-Apache Kafka is a distributed streaming platform which makes it easy to integrate various producers and consumers with each others. In theory kafka offers extremly high througput and easy scalability with relativly low latency.
+Apache Kafka is a distributed streaming platform which makes it easy to integrate various producers and consumers with each others. In theory kafka offers extremly high througput and easy scalability with relativly low latency. Using a decoupled architecture provided by this event-driven model also allows for easy extensiability in the future.
 
 The Kafka producer extracts the new earthquakes using a websocket, creates a JSONObject and serealizes them using a custom serealizer. Once they are pushed to the kafka topic the consumer pulls them and deserealizes them again using a custom deserealizer, which turns them back into a JSONObject.
 
@@ -63,6 +63,8 @@ __Database and regional replication__
 As a database I have used DynamoDB. DynamoDB is a key-value store on AWS that uses 3 storage nodes across which data is partitioned according to the hash value of a private key. Moreover the WAL is backuped on S3. By handling all of that internaly I can focus on other parts of the app. Moreover DynamoDB  has the option of global tables, where a table is replicated across multiple regions. If the frontend service gets accessed from all over the world, global tables can reduce latency by a lot. In addition to that global tables make writing to replicated tables and keeping consistency across regions very simple, by handling all of that within AWS.
 You can set the regions in which the table should be replicated within the [var.tf](./terraform/var.tf) file under global_table_replication_region. Terraform will automatically create the table within your region and the chosen replication region.
 
+In this specific use-case one might argue, that a cache with a 24h TTL is a better option. However I wanted to also enable analytic use-cases with more data in the future, which is why I chose DynamoDB.
+
 The Kafka Consumer will write directly to DynamoDB. As a magnitude 1+ earthquake occurs roughly every 30 seconds, there will be very little writes on the DynamoDB table. To reduce RCUs and thus costs, we could use a DAX Cluster infront of DynamoDB to cache the data, however due to frequent updates, this only makes sense with enough reads.
 
 
@@ -89,16 +91,14 @@ __Load balancing & scaling__
 
 I was thinking of using AWS AppRunner for running the frontend in a simple way. However when comparing cost, it became clear that in a production environment where the frontend scales to multiple containers, the implementation with an ALB LoadBalancer and Fargate will become way cheaper. The application load balancer redirects all HTTP traffic to port 8501 of the frontend container. It has a rule, that if 90% of the ram of a frontend container is used, it will scale out another one. Since this project is not intended for production usage, the maximum amount of running containers is set to 2 via the autoscaling group. Currently all created containers will be within one AZ. However there is the possibility fo further advance this project and scale out in different regions depending on traffic. The DynamoDb table will already be replicated across a region, you can choose. The load balancer has a WAF firewall, which protects from dos attacks by allowing only 500 requests from the same ip-adress within a 5 minute period. This also serves as cost protection for regular requests.
 
-### How to run the project
+### CD Pipeline building the project
 
 Since I have already preconfigured everything, you only need a few things and undergo little effort to create the project.
 __Note:__ This project will lead to costs on AWS, I am by no means repsonsible for any charges on your account.
 
-You need to have Terraform installed, and authenticated with AWS as wel as beeing able to execute shell scripts. The ability to build docker containers is a requirement too.
+You need to have Terraform installed, and authenticated with AWS as wel as beeing able to execute shell scripts. The ability to build docker containers is a requirement too. Moreover you need to have finops installed and configured and pre-commit-hooks installed if yu want to make any code-changes. Also for the build pipeline go-task is required and you need to have trivy to scan your image for vulnerabilities.
 
-Moreover you need to have finops installed and configured and pre-commit-hooks installed if yu want to make any code-changes.
-
-Once that has been made sure, you have to create a file called `prod.tfvars` and set some variables in it. They are:
+Once that has been made sure, you have to fill the `prod.tfvars` file with some variables. They are:
 
 - aws_region: The region in which you want your services to sit
 - global_table_replication_region: The region in which the global table should be replicated
@@ -107,22 +107,19 @@ Once that has been made sure, you have to create a file called `prod.tfvars` and
 - statefile_bucket: The name of the bucket storing the tf statefile
 - site_version: The version of the finops Dashboard as v:n
 
-Afterfards you need to start the docker daemon, navigate into the terraform folder and run:
+Afterfards you need to start the docker daemon, navigate into the projects root folder and run:
 ```bash
-terraform init
+task deploy
 ```
 
-```bash
-terraform apply -var-file="prod.tfvars"
-```
+The whole project including configurations will now be created for you. Task does not only create AWS ressources for you, but will also request the docker daemon to build the frontend image and push it to ECR. In addition to that I have created two scripts to [initiate services on the logging server](terraform/initiate_logging.sh) and to [initiate services on the Kafka server](terraform/initiate.sh), which will install all required dependencies on them and start the required containers with their respective dependencies.
 
-The whole project including configurations will now be created for you. Terraform does not only create AWS ressources for you, but will also request the docker daemon to build the frontend image and push it to ECR. In addition to that I have created two scripts to [initiate services on the logging server](terraform/initiate_logging.sh) and to [initiate services on the Kafka server](terraform/initiate.sh), which will install all required dependencies on them and start the required containers with their respective dependencies.
+**task-go** is a lightweight YAML-based task runner / build tool, which is our replacement for a full fledged CI/CD pipeline in this demo project. In a production env one would run a pipeline like Github actions upon a merge on the repos main branch to test all changes and then deploy them.
 
 ### Future outlook
 
 These are some topics, which could be added next:
 
 - HTTPS Load Balancer
-- Exporting DynamoDB Data to S3 (via lambda full export)
-- Place Kafka & Grafana Instance in a private Subnet
-- DynamoDB 24h TTL
+- Exporting DynamoDB Data to S3 (via lambda daily export)
+- Place Kafka & Grafana Instance in a private subnet and the Dashboard behind the ALB
