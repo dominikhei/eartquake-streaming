@@ -1,11 +1,11 @@
 resource "tls_private_key" "this" {
-  algorithm     = "RSA"
-  rsa_bits      = 4096
+  algorithm = "RSA"
+  rsa_bits  = 4096
 }
 
 resource "aws_key_pair" "this" {
-  key_name      = "kafka-server-key"
-  public_key    = tls_private_key.this.public_key_openssh
+  key_name   = "kafka-server-key"
+  public_key = tls_private_key.this.public_key_openssh
 
   provisioner "local-exec" {
     command = <<-EOT
@@ -15,13 +15,13 @@ resource "aws_key_pair" "this" {
 }
 
 resource "tls_private_key" "this_two" {
-  algorithm     = "RSA"
-  rsa_bits      = 4096
+  algorithm = "RSA"
+  rsa_bits  = 4096
 }
 
 resource "aws_key_pair" "this_two" {
-  key_name      = "logging-server-key"
-  public_key    = tls_private_key.this_two.public_key_openssh
+  key_name   = "logging-server-key"
+  public_key = tls_private_key.this_two.public_key_openssh
 
   provisioner "local-exec" {
     command = <<-EOT

@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 
 sudo apt-get -y update
 sudo apt-get -y install docker.io docker-compose
@@ -11,4 +11,4 @@ git clone https://github.com/dominikhei/eartquake-streaming.git
 
 cd eartquake-streaming/logging
 
-docker-compose up -d 
+docker-compose up -d

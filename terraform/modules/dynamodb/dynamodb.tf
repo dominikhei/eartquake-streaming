@@ -1,14 +1,18 @@
-module "terraform-aws-dynamodb" {
-  source  = "mineiros-io/dynamodb/aws"
-  version = "~> 0.6.0"
-
+resource "aws_dynamodb_table" "earthquakes" {
   name         = "eartquakes"
-  hash_key     = "id"
   billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "id"
 
-  attributes = {
-    id = "S"
+  attribute {
+    name = "id"
+    type = "S"
   }
 
-  replica_region_names = [var.global_table_replication_region]
+  replica {
+    region_name = var.global_table_replication_region
+  }
+
+  tags = {
+    Name = "earthquakes"
+  }
 }

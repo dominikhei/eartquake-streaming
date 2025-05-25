@@ -23,11 +23,11 @@ variable "public_subnet_1_id" {
 }
 
 variable "public_subnet_2_id" {
-    
+
 }
 
 variable "vpc_id" {
-    
+
 }
 
 variable "account_id" {
@@ -35,5 +35,5 @@ variable "account_id" {
 }
 
 variable "aws_region" {
-    
+
 }

@@ -18,7 +18,7 @@ resource "aws_iam_role" "ec2_role" {
 resource "aws_iam_policy" "dynamodb_policy" {
   name        = "dynamo-policy"
   description = "Allows read and write access to a specific DynamoDB table"
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -51,7 +51,7 @@ resource "aws_iam_instance_profile" "kafka_streaming_instance_profile" {
 resource "aws_iam_policy" "dynamodb_policy_read_only" {
   name        = "dynamo-policy-read-only"
   description = "Allows read and write access to a specific DynamoDB table"
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -73,16 +73,16 @@ resource "aws_iam_policy" "dynamodb_policy_read_only" {
 resource "aws_iam_role" "ecs_role" {
   name = "ecs_role"
   assume_role_policy = jsonencode({
-    Version: "2012-10-17",
-    Statement: [
-    {
-      Effect: "Allow",
-      Principal: {
-        Service: "ecs-tasks.amazonaws.com"
-      },
-      Action: "sts:AssumeRole"
-    }
-  ]
+    Version : "2012-10-17",
+    Statement : [
+      {
+        Effect : "Allow",
+        Principal : {
+          Service : "ecs-tasks.amazonaws.com"
+        },
+        Action : "sts:AssumeRole"
+      }
+    ]
   })
 
 }

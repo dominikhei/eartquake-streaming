@@ -12,16 +12,21 @@ variable "global_table_replication_region" {
 
 variable "my_ip" {
   description = "Your local IP adress"
-  type = string
+  type        = string
 }
 
 variable "account_id" {
   description = "Your AWS account ID"
-  type = string
+  type        = string
 }
 
 variable "dynamodb_table_name" {
   description = "Name of the DynamoDB table you want to grant access to"
-  type = string
-  default = "eartquakes"
+  type        = string
+  default     = "eartquakes"
+}
+
+variable "site_version" {
+  type        = string
+  description = "Version or hash string for the index.html"
 }

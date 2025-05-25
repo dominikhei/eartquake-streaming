@@ -1,0 +1,25 @@
+
+version: 0.1
+resource_usage:
+
+  module.networking.aws_wafv2_web_acl.dos:
+    rule_group_rules: 1
+    managed_rule_group_rules: 1
+    monthly_requests: 172800
+
+  module.dynamodb.module.terraform-aws-dynamodb.aws_dynamodb_table.table[0]:
+    monthly_read_request_units: 600000
+    monthly_write_request_units: 86400
+    storage_gb: 0.002880
+
+  module.ecr.aws_ecr_repository.frontend_repository:
+    storage_gb: 0.5
+
+  module.load_balancing.aws_lb.main:
+    new_connections: 4
+    active_connections: 4
+    processed_bytes_gb: 0.05
+    rule_evaluations: 0
+
+  module.networking.aws_nat_gateway.nat_gateway:
+    monthly_data_processed_gb: 0
