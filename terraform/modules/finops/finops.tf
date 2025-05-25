@@ -153,18 +153,3 @@ resource "aws_cloudfront_distribution" "static_site" {
 
   web_acl_id = aws_wafv2_web_acl.ip_restriction.arn
 }
-
-output "cloudfront_domain_name" {
-  value       = aws_cloudfront_distribution.static_site.domain_name
-  description = "CloudFront distribution domain name"
-}
-
-output "cloudfront_url" {
-  value       = "https://${aws_cloudfront_distribution.static_site.domain_name}"
-  description = "CloudFront distribution URL"
-}
-
-output "bucket_name" {
-  value       = aws_s3_bucket.infracost_static_site.id
-  description = "Name of the S3 bucket"
-}
