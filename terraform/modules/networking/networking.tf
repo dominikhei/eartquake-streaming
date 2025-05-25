@@ -7,8 +7,8 @@ resource "aws_vpc" "seismic-project-vpc" {
 }
 
 resource "aws_subnet" "streaming-subnet" {
-  vpc_id     = aws_vpc.seismic-project-vpc.id
-  cidr_block = "10.0.1.0/24"
+  vpc_id            = aws_vpc.seismic-project-vpc.id
+  cidr_block        = "10.0.1.0/24"
   availability_zone = "${var.aws_region}a"
 
   tags = {
@@ -17,8 +17,8 @@ resource "aws_subnet" "streaming-subnet" {
 }
 
 resource "aws_subnet" "seismic-subnet" {
-  vpc_id     = aws_vpc.seismic-project-vpc.id
-  cidr_block = "10.0.4.0/24"
+  vpc_id            = aws_vpc.seismic-project-vpc.id
+  cidr_block        = "10.0.4.0/24"
   availability_zone = "${var.aws_region}a"
 
   tags = {
@@ -29,23 +29,23 @@ resource "aws_subnet" "seismic-subnet" {
 resource "aws_security_group" "streaming_security_group" {
   name_prefix = "streaming-security-group"
 
- ingress {
+  ingress {
     from_port   = 3000
     to_port     = 3000
     protocol    = "tcp"
     cidr_blocks = [var.my_ip]
   }
- ingress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    self = true
-  }
-
- egress {
+  ingress {
     from_port = 0
     to_port   = 0
     protocol  = "-1"
+    self      = true
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
@@ -55,28 +55,28 @@ resource "aws_security_group" "streaming_security_group" {
 resource "aws_security_group" "project_security_group" {
   name_prefix = "project-security-group"
 
- ingress {
+  ingress {
     from_port = 0
     to_port   = 0
     protocol  = "-1"
-    self = true
+    self      = true
   }
- ingress {
+  ingress {
     from_port   = 3000
     to_port     = 3000
     protocol    = "tcp"
     cidr_blocks = [var.my_ip]
   }
   ingress {
-   protocol         = "tcp"
-   from_port        = 8501
-   to_port          = 8501
-   security_groups = [aws_security_group.alb.id]
+    protocol        = "tcp"
+    from_port       = 8501
+    to_port         = 8501
+    security_groups = [aws_security_group.alb.id]
   }
- egress {
-    from_port = 0
-    to_port   = 0
-    protocol  = "-1"
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
@@ -89,9 +89,9 @@ resource "aws_internet_gateway" "seismic_internet_gateway" {
 
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.seismic-project-vpc.id
-    route {
+  route {
     cidr_block = "0.0.0.0/0"
-    gateway_id             = aws_internet_gateway.seismic_internet_gateway.id
+    gateway_id = aws_internet_gateway.seismic_internet_gateway.id
   }
 }
 
@@ -124,13 +124,13 @@ resource "aws_route" "nat_gateway_route" {
   destination_cidr_block = "0.0.0.0/0"
   nat_gateway_id         = aws_nat_gateway.nat_gateway.id
 }
- 
+
 resource "aws_nat_gateway" "nat_gateway" {
   allocation_id = aws_eip.nat.id
   subnet_id     = aws_subnet.public1.id
   depends_on    = [aws_internet_gateway.seismic_internet_gateway]
 }
- 
+
 resource "aws_eip" "nat" {
   vpc = true
 }
@@ -157,28 +157,28 @@ resource "aws_subnet" "public2" {
 
 resource "aws_security_group" "alb" {
   name   = "load-balancer-sg"
-  vpc_id = aws_vpc.seismic-project-vpc.id  
- 
+  vpc_id = aws_vpc.seismic-project-vpc.id
+
   ingress {
-   protocol         = "tcp"
-   from_port        = 80
-   to_port          = 80
-   cidr_blocks      = ["0.0.0.0/0"]
-   ipv6_cidr_blocks = ["::/0"]
+    protocol         = "tcp"
+    from_port        = 80
+    to_port          = 80
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
   }
- 
+
   egress {
-   protocol         = "-1"
-   from_port        = 0
-   to_port          = 0
-   cidr_blocks      = ["0.0.0.0/0"]
-   ipv6_cidr_blocks = ["::/0"]
+    protocol         = "-1"
+    from_port        = 0
+    to_port          = 0
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
   }
 }
 
 resource "aws_wafv2_web_acl" "dos" {
-  name        = "rate-based"
-  scope       = "REGIONAL"
+  name  = "rate-based"
+  scope = "REGIONAL"
 
   default_action {
     allow {}
@@ -194,7 +194,7 @@ resource "aws_wafv2_web_acl" "dos" {
 
     statement {
       rate_based_statement {
-        limit              = 100 
+        limit              = 100
         aggregate_key_type = "IP"
       }
     }
@@ -214,6 +214,6 @@ resource "aws_wafv2_web_acl" "dos" {
 }
 
 resource "aws_wafv2_web_acl_association" "acl_association" {
-  web_acl_arn   = aws_wafv2_web_acl.dos.arn
-  resource_arn  = var.alb_arn
+  web_acl_arn  = aws_wafv2_web_acl.dos.arn
+  resource_arn = var.alb_arn
 }

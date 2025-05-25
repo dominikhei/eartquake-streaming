@@ -1,13 +1,13 @@
 provider "aws" {
   region = "us-east-1"
-  alias = "finops"
+  alias  = "finops"
 }
 
 resource "null_resource" "run_infracost" {
   provisioner "local-exec" {
     command = "./infracost.sh"
   }
-  
+
   triggers = {
     script_hash = filemd5("${path.module}/infracost.sh")
   }
@@ -22,7 +22,7 @@ resource "aws_s3_object" "index_versioned" {
   key          = "index.${var.site_version}.html"
   content      = file("${path.module}/index.html")
   content_type = "text/html"
-  depends_on = [null_resource.run_infracost]
+  depends_on   = [null_resource.run_infracost]
 }
 
 resource "aws_s3_bucket_public_access_block" "static_site" {
@@ -75,8 +75,8 @@ resource "aws_wafv2_ip_set" "allowed_ips" {
 }
 
 resource "aws_wafv2_web_acl" "ip_restriction" {
-  name  = "ip-restriction-acl"
-  scope = "CLOUDFRONT"
+  name     = "ip-restriction-acl"
+  scope    = "CLOUDFRONT"
   provider = aws.finops
 
   default_action {
@@ -99,15 +99,15 @@ resource "aws_wafv2_web_acl" "ip_restriction" {
 
     visibility_config {
       cloudwatch_metrics_enabled = false
-      metric_name                 = "AllowSpecificIPRule"
-      sampled_requests_enabled    = false
+      metric_name                = "AllowSpecificIPRule"
+      sampled_requests_enabled   = false
     }
   }
 
   visibility_config {
     cloudwatch_metrics_enabled = false
-    metric_name                 = "IPRestrictionACL"
-    sampled_requests_enabled    = false
+    metric_name                = "IPRestrictionACL"
+    sampled_requests_enabled   = false
   }
 }
 
