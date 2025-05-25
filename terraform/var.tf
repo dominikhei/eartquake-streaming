@@ -20,12 +20,6 @@ variable "account_id" {
   type        = string
 }
 
-variable "dynamodb_table_name" {
-  description = "Name of the DynamoDB table you want to grant access to"
-  type        = string
-  default     = "eartquakes"
-}
-
 variable "site_version" {
   type        = string
   description = "Version or hash string for the index.html"
