@@ -73,6 +73,18 @@ The Frontend is a containerized streamlit app. Once you run a terraform apply co
 *This is how the Dashboard currently looks like:*
 ![](.images/eartquake_frontend.png)
 
+__FinOps Dashboard:__
+
+To keep track of the current cost of this service in a visually pleasing way, I have included a static finops dashboard showing monthly and hourly cost. I have utilized the infracost framework for this (https://github.com/infracost/infracost), which reads all the services from the Terraform files and some underyling assumptions on request amounts that are predefined [here](terraform/modules/finops/infracost-usage.yml). The Dashboard is deployed on an S3 static site and a CloudFront CDN makes sure that it is only accessible from your local IP. Version tagging the index.html file guarantees that CloudFront always serves the newest one. The version needs to be manually set, in a production environment this would be doen via a CI/CD pipeline.
+CloudFront moreover ensures that the Dahsboard will be cached at edge until a new version is created, which reduces access-time. 
+
+The CloudFront URL will be put out to the console
+
+*This is what the Dahsboard looks like:*
+![](.images/finops_dashboard.png)
+(Please note that I have utilized LLMs for the Dashboard as HTML is not my cup of tea)
+
+
 __Load balancing & scaling__
 
 I was thinking of using AWS AppRunner for running the frontend in a simple way. However when comparing cost, it became clear that in a production environment where the frontend scales to multiple containers, the implementation with an ALB LoadBalancer and Fargate will become way cheaper. The application load balancer redirects all HTTP traffic to port 8501 of the frontend container. It has a rule, that if 90% of the ram of a frontend container is used, it will scale out another one. Since this project is not intended for production usage, the maximum amount of running containers is set to 2 via the autoscaling group. Currently all created containers will be within one AZ. However there is the possibility fo further advance this project and scale out in different regions depending on traffic. The DynamoDb table will already be replicated across a region, you can choose. The load balancer has a WAF firewall, which protects from dos attacks by allowing only 500 requests from the same ip-adress within a 5 minute period. This also serves as cost protection for regular requests. 

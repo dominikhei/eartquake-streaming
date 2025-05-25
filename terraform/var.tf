@@ -25,3 +25,8 @@ variable "dynamodb_table_name" {
   type = string
   default = "eartquakes"
 }
+
+variable "site_version" {
+  type        = string
+  description = "Version or hash string for the index.html"
+}

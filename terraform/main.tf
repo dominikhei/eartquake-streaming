@@ -56,3 +56,10 @@ module "networking" {
 module "tls" {
     source = "./modules/tls"       
 }
+
+module "finops" {
+    source = "./modules/finops"
+
+    my_ip      = var.my_ip
+    site_version = var.site_version
+}

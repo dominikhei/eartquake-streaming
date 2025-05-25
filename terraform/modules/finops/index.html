@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Earthquake Streaming Infracost</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            padding: 30px;
+            border-radius: 15px 15px 0 0;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .dashboard {
+            padding: 30px;
+        }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            border-left: 5px solid;
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card.cost { border-left-color: #e74c3c; }
+        .card.resources { border-left-color: #3498db; }
+        .card.currency { border-left-color: #2ecc71; }
+        .card.metadata { border-left-color: #f39c12; }
+
+        .card-title {
+            font-size: 0.9rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .card-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .section {
+            background: white;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .section-header {
+            background: linear-gradient(135deg, #34495e, #2c3e50);
+            color: white;
+            padding: 20px;
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .section-content {
+            padding: 25px;
+        }
+
+        .resource-grid {
+            display: grid;
+            gap: 20px;
+        }
+
+        .resource-item {
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            background: #f8f9fa;
+            transition: all 0.3s ease;
+        }
+
+        .resource-item:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+
+        .resource-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .resource-name {
+            font-weight: bold;
+            color: #2c3e50;
+            font-size: 1.1rem;
+        }
+
+        .resource-cost {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            box-shadow: 0 2px 10px rgba(231, 76, 60, 0.3);
+        }
+
+        .resource-type {
+            color: #666;
+            font-size: 0.9rem;
+            background: #ffffff;
+            padding: 4px 12px;
+            border-radius: 15px;
+            border: 1px solid #ddd;
+        }
+
+        .cost-components {
+            margin-top: 15px;
+        }
+
+        .component-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .component-item:last-child {
+            border-bottom: none;
+        }
+
+        .component-name {
+            color: #495057;
+        }
+
+        .component-cost {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .metadata-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+        }
+
+        .metadata-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border-left: 3px solid #3498db;
+        }
+
+        .metadata-key {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .metadata-value {
+            color: #6c757d;
+            text-align: right;
+            word-break: break-word;
+        }
+
+        .no-data {
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+            padding: 40px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+            border: 1px solid #f5c6cb;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .resource-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .metadata-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏗️ Infracost Dashboard</h1>
+            <p>Infrastructure Cost Analysis & Breakdown</p>
+        </div>
+
+        <div class="dashboard" id="dashboard">
+        </div>
+    </div>
+
+    <script>
+
+        function showError(message) {
+            document.getElementById('dashboard').innerHTML = `
+                <div class="error">
+                    <strong>Error:</strong> ${message}
+                </div>
+            `;
+        }
+
+        function formatCurrency(amount, currency = 'USD') {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: currency
+            }).format(amount);
+        }
+
+        function renderDashboard() {
+            if (!infracostData || !infracostData.projects || infracostData.projects.length === 0) {
+                showError('No project data found in the file');
+                return;
+            }
+
+            const project = infracostData.projects[0];
+            const breakdown = project.breakdown || project.pastBreakdown;
+            
+            if (!breakdown) {
+                showError('No breakdown data found');
+                return;
+            }
+
+            const dashboard = document.getElementById('dashboard');
+            dashboard.innerHTML = '';
+
+            // Summary Cards
+            const summaryHtml = `
+                <div class="summary-cards">
+                    <div class="card cost">
+                        <div class="card-title">Total Monthly Cost</div>
+                        <div class="card-value">${formatCurrency(parseFloat(breakdown.totalMonthlyCost || 0), infracostData.currency)}</div>
+                    </div>
+                    <div class="card cost">
+                        <div class="card-title">Total Hourly Cost</div>
+                        <div class="card-value">${formatCurrency(parseFloat(breakdown.totalHourlyCost || 0), infracostData.currency)}</div>
+                    </div>
+                    <div class="card resources">
+                        <div class="card-title">Paid Resources</div>
+                        <div class="card-value">${breakdown.resources ? breakdown.resources.length : 0}</div>
+                    </div>
+                    <div class="card resources">
+                        <div class="card-title">Free Resources</div>
+                        <div class="card-value">${breakdown.freeResources ? breakdown.freeResources.length : 0}</div>
+                    </div>
+                </div>
+            `;
+
+            dashboard.innerHTML += summaryHtml;
+
+            // Project Metadata
+            if (infracostData.metadata) {
+                const metadataHtml = `
+                    <div class="section">
+                        <div class="section-header">📋 Project Metadata</div>
+                        <div class="section-content">
+                            <div class="metadata-grid">
+                                ${Object.entries(infracostData.metadata)
+                                    .filter(([key, value]) => value !== null && value !== undefined && value !== '')
+                                    .map(([key, value]) => `
+                                        <div class="metadata-item">
+                                            <span class="metadata-key">${formatKey(key)}</span>
+                                            <span class="metadata-value">${formatValue(value)}</span>
+                                        </div>
+                                    `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                dashboard.innerHTML += metadataHtml;
+            }
+
+            // Paid Resources
+            if (breakdown.resources && breakdown.resources.length > 0) {
+                const resourcesHtml = `
+                    <div class="section">
+                        <div class="section-header">💰 Paid Resources</div>
+                        <div class="section-content">
+                            <div class="resource-grid">
+                                ${breakdown.resources.map(resource => renderResource(resource)).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                dashboard.innerHTML += resourcesHtml;
+            }
+
+            // Free Resources
+            if (breakdown.freeResources && breakdown.freeResources.length > 0) {
+                const freeResourcesHtml = `
+                    <div class="section">
+                        <div class="section-header">🆓 Free Resources</div>
+                        <div class="section-content">
+                            <div class="resource-grid">
+                                ${breakdown.freeResources.map(resource => renderFreeResource(resource)).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                dashboard.innerHTML += freeResourcesHtml;
+            }
+        }
+
+        function renderResource(resource) {
+            const monthlyCost = parseFloat(resource.monthlyCost || 0);
+            const hourlyCost = parseFloat(resource.hourlyCost || 0);
+            
+            return `
+                <div class="resource-item">
+                    <div class="resource-header">
+                        <div>
+                            <div class="resource-name">${resource.name}</div>
+                            <div class="resource-type">${resource.resourceType}</div>
+                        </div>
+                        <div class="resource-cost">
+                            ${formatCurrency(monthlyCost, infracostData.currency)}/month
+                        </div>
+                    </div>
+                    ${resource.costComponents && resource.costComponents.length > 0 ? `
+                        <div class="cost-components">
+                            <strong>Cost Components:</strong>
+                            ${resource.costComponents.map(component => `
+                                <div class="component-item">
+                                    <span class="component-name">${component.name}</span>
+                                    <span class="component-cost">
+                                        ${component.monthlyCost ? formatCurrency(parseFloat(component.monthlyCost), infracostData.currency) : 'Usage-based'}
+                                    </span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                    ${resource.subresources && resource.subresources.length > 0 ? `
+                        <div class="cost-components">
+                            <strong>Subresources:</strong>
+                            ${resource.subresources.map(sub => `
+                                <div class="component-item">
+                                    <span class="component-name">${sub.name}</span>
+                                    <span class="component-cost">
+                                        ${formatCurrency(parseFloat(sub.monthlyCost || 0), infracostData.currency)}
+                                    </span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        function renderFreeResource(resource) {
+            return `
+                <div class="resource-item">
+                    <div class="resource-header">
+                        <div>
+                            <div class="resource-name">${resource.name}</div>
+                            <div class="resource-type">${resource.resourceType}</div>
+                        </div>
+                        <div class="resource-cost" style="background: linear-gradient(135deg, #2ecc71, #27ae60);">
+                            FREE
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function formatKey(key) {
+            return key.replace(/([A-Z])/g, ' $1')
+                     .replace(/^./, str => str.toUpperCase())
+                     .replace(/_/g, ' ');
+        }
+
+        function formatValue(value) {
+            if (typeof value === 'string' && value.length > 50) {
+                return value.substring(0, 50) + '...';
+            }
+            return value;
+        }
+
+
+        const sampleData = $INFRACOST;
+        
+        // Auto-load the sample data
+        const infracostData = sampleData;
+        window.onload = () => renderDashboard();
+    </script>
+</body>
+</html>

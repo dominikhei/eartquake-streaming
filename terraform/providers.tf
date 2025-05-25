@@ -1,5 +1,12 @@
 provider "aws" {
-  region = var.aws_region #replace the region to your desired region in the var.tf file
+  region = var.aws_region 
+  version = "~> 4.60"
+}
+
+provider "aws" {
+  region = "us-east-1"
+  alias = "finops"
+  version = "~> 4.60"
 }
 
 provider "tls" {
