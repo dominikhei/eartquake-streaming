@@ -32,6 +32,12 @@ build/
 ### VS Code ###
 .vscode/
 
-.DS_Store 
+.DS_Store
 
 *.todo
+
+*.tfvars
+*.tfstate
+*.lock.hcl
+*/.terraform
+*/.infracost

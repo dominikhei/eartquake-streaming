@@ -1,0 +1,65 @@
+version: '3'
+
+vars:
+  AWS_REGION: eu-central-1        #replace with your aws region
+  IMAGE_NAME: earthquake_frontend
+
+tasks:
+  lint:
+    dir: terraform
+    cmds:
+      - terraform fmt
+      - terraform validate
+
+  terraform-init:
+    deps: [lint]
+    dir: terraform
+    cmds:
+      - terraform init
+
+  terraform-apply:
+    deps: [terraform-init, infracost]
+    dir: terraform
+    cmds:
+      - terraform apply -auto-approve -var-file="prod.tfvars"
+
+  infracost:
+    dir: terraform/modules/finops
+    cmds:
+      - chmod +x infracost.sh
+      - ./infracost.sh
+
+  sleep:
+    deps: [terraform-apply]
+    cmds:
+      - sleep 15
+
+  docker-login:
+    deps: [sleep]
+    desc: Authenticate Docker with ECR
+    cmds:
+      - |
+        export ECR_URL=$(cd terraform && terraform output -raw ecr_url)
+        aws ecr get-login-password --region {{.AWS_REGION}} | docker login --username AWS --password-stdin $ECR_URL
+
+  docker-build:
+    deps: [docker-login]
+    desc: Build Docker image
+    dir: terraform/frontend
+    cmds:
+      - docker build -t {{.IMAGE_NAME}}:latest .
+
+  scan:
+    deps:  [docker-build]
+    cmds:
+      - trivy image {{.IMAGE_NAME}}
+
+  docker-push:
+    deps: [scan]
+    cmds:
+      - docker tag {{.IMAGE_NAME}}:latest $ECR_URL:latest
+      - docker push $ECR_URL:latest
+
+  deploy:
+    deps:
+      - docker-push

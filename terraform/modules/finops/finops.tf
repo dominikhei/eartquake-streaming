@@ -3,16 +3,6 @@ provider "aws" {
   alias  = "finops"
 }
 
-resource "null_resource" "run_infracost" {
-  provisioner "local-exec" {
-    command = "./infracost.sh"
-  }
-
-  triggers = {
-    script_hash = filemd5("${path.module}/infracost.sh")
-  }
-}
-
 resource "aws_s3_bucket" "infracost_static_site" {
   bucket = "infracost-static-site-bucket-earthquake-streaming"
 }
@@ -22,7 +12,6 @@ resource "aws_s3_object" "index_versioned" {
   key          = "index.${var.site_version}.html"
   content      = file("${path.module}/index.html")
   content_type = "text/html"
-  depends_on   = [null_resource.run_infracost]
 }
 
 resource "aws_s3_bucket_public_access_block" "static_site" {
@@ -67,6 +56,7 @@ resource "aws_s3_bucket_policy" "static_site" {
 }
 
 resource "aws_wafv2_ip_set" "allowed_ips" {
+  provider = aws.finops
   name  = "allowed-ips"
   scope = "CLOUDFRONT"
 
