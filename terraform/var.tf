@@ -24,3 +24,18 @@ variable "site_version" {
   type        = string
   description = "Version or hash string for the index.html"
 }
+
+variable "cognito_domain_prefix" {
+  description = "Prefix for Cognito domain"
+  type        = string
+}
+
+variable "cognito_password" {
+  description = "Password for Cognito authentication"
+  type        = string
+}
+
+variable "cognito_username" {
+  description = "Username for Cognito authentication"
+  type        = string
+}

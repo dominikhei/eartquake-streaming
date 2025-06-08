@@ -61,5 +61,10 @@ module "finops" {
   source = "./modules/finops"
 
   my_ip        = var.my_ip
+  
   site_version = var.site_version
+  cognito_domain_prefix = var.cognito_domain_prefix
+  cognito_password = var.cognito_password
+  cognito_username = var.cognito_username
+  edge_lambda_role_arn = module.i_am.edge_lambda_role_arn
 }

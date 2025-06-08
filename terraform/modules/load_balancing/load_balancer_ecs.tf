@@ -15,7 +15,6 @@ resource "aws_alb_target_group" "main" {
   protocol    = "HTTP"
   vpc_id      = var.vpc_id
   target_type = "ip"
-
 }
 
 resource "aws_alb_listener" "http" {

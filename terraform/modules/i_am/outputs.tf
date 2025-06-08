@@ -10,3 +10,7 @@ output "ecs_execution_role_arn" {
 output "ecs_role_arn" {
   value = aws_iam_role.ecs_role.arn
 }
+
+output "edge_lambda_role_arn" {
+  value = aws_iam_role.lambda_edge_role.arn
+}
