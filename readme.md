@@ -43,7 +43,7 @@ The Consumer reads the events that have arrived and deserealizes it into a JSONO
 *This is a detailed visual representation of the Kafka and logging setup:*
 ![](./.images/ec2_services.png)
 
-In a production environment, one would also seperate consumer / producers one level further and place them on different instances.
+In a production environment, one would also seperate consumer / producers one level further and place them on different instances / use a Kubernetes deployment.
 
 __Logging__
 
@@ -77,7 +77,7 @@ The Frontend is a containerized streamlit app. Once you run a terraform apply co
 
 __FinOps Dashboard:__
 
-To keep track of the current cost of this service in a visually pleasing way, I have included a static finops dashboard showing monthly and hourly cost. I have utilized the infracost framework for this (https://github.com/infracost/infracost), which reads all the services from the Terraform files and some underyling assumptions on request amounts that are predefined [here](terraform/modules/finops/infracost-usage.yml). The Dashboard is deployed on an S3 static site and a CloudFront CDN makes sure that it is only accessible from your local IP. Version tagging the index.html file guarantees that CloudFront always serves the newest one. The version needs to be manually set, in a production environment this would be doen via a CI/CD pipeline.
+To keep track of the current cost of this service in a visually pleasing way, I have included a static finops dashboard showing monthly and hourly cost. I have utilized the infracost framework for this (https://github.com/infracost/infracost), which reads all the services from the Terraform files and some underyling assumptions on request amounts that are predefined [here](terraform/modules/finops/infracost-usage.yml). The Dashboard is deployed on an S3 static site with a CloudFront CDN infront. Version tagging the index.html file guarantees that CloudFront always serves the newest one. The version needs to be manually set, in a production environment this would be doen via a CI/CD pipeline.
 CloudFront moreover ensures that the Dahsboard will be cached at edge until a new version is created, which reduces access-time.
 
 The CloudFront URL will be put out to the console
@@ -86,6 +86,12 @@ The CloudFront URL will be put out to the console
 ![](.images/finops_dashboard.png)
 (Please note that I have utilized LLMs for the Dashboard as HTML is not my cup of tea)
 
+Authentication is handled via Cognito. A user is pre-cretaed with a temporary password. Both username and password will be printed to the console. When using Cognito with Cloudfront, one needs to catch each incoming request using a Lambda@Edge function, that checks for a session cookie. If this is not present, a user is redirected to the Cognito UI where he/she can login and receive their token.
+With this simple OAUTH2 workflow, one does not need to authnticate via username and password directly, allowing for a more secure workflow. In case of no present session cookie, the workflow looks like this:
+
+![OAuth2 Workflow](.images/auth_workflow.png)
+
+Moreover there is a WAF ACL, only allowing 10 requests per IP per minute, thus protecting from DOS attacks.
 
 __Load balancing & scaling__
 
