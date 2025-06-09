@@ -4,10 +4,10 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Environment       = "dev"
-      Project           = "eartquake-streaming"
-      Cost-Center       = "analytics"
-      }
+      Environment = "dev"
+      Project     = "eartquake-streaming"
+      Cost-Center = "analytics"
+    }
   }
 }
 

@@ -145,34 +145,13 @@ resource "aws_cognito_user" "sample_user" {
   message_action     = "SUPPRESS"
 }
 
-resource "aws_iam_role" "lambda_edge_role" {
-  provider = aws.finops
-  name = "lambda-edge-cognito-auth-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = [
-            "lambda.amazonaws.com",
-            "edgelambda.amazonaws.com"
-          ]
-        }
-      }
-    ]
-  })
-}
-
 resource "aws_lambda_function" "auth_lambda" {
 
   provider = aws.finops
   
   filename         = data.archive_file.lambda_zip.output_path
   function_name    = "cognito-auth-lambda-edge"
-  role            = aws_iam_role.lambda_edge_role.arn
+  role            = var.edge_lambda_role_arn
   handler         = "lambda_auth.handler"
   runtime         = "nodejs18.x"
   timeout         = 5

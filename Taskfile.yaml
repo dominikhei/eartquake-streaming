@@ -3,22 +3,25 @@ version: '3'
 vars:
   AWS_REGION: eu-central-1        #replace with your aws region
   IMAGE_NAME: earthquake_frontend
+  PASSWORD: Texx114z//&!
+  ECR_URL:
+    sh: cd terraform && terraform output -raw ecr_url
 
 tasks:
   lint:
+    deps: [terraform-init]
     dir: terraform
     cmds:
       - terraform fmt
       - terraform validate
 
   terraform-init:
-    deps: [lint]
     dir: terraform
     cmds:
       - terraform init
 
   terraform-apply:
-    deps: [terraform-init, infracost]
+    deps: [lint, infracost]
     dir: terraform
     cmds:
       - terraform apply -auto-approve -var-file="prod.tfvars"
@@ -35,11 +38,11 @@ tasks:
       - sleep 15
 
   docker-login:
-    deps: [sleep]
+    deps: 
     desc: Authenticate Docker with ECR
     cmds:
       - |
-        export ECR_URL=$(cd terraform && terraform output -raw ecr_url)
+        ECR_URL=$(cd terraform && terraform output -raw ecr_url)
         aws ecr get-login-password --region {{.AWS_REGION}} | docker login --username AWS --password-stdin $ECR_URL
 
   docker-build:
@@ -57,9 +60,36 @@ tasks:
   docker-push:
     deps: [scan]
     cmds:
-      - docker tag {{.IMAGE_NAME}}:latest $ECR_URL:latest
-      - docker push $ECR_URL:latest
+      - docker tag {{.IMAGE_NAME}}:latest {{.ECR_URL}}:latest
+      - docker push {{.ECR_URL}}:latest
+
+  set-cognito-password:
+    #deps: [docker-push]
+    cmds:
+      - |
+        USER_POOL_ID=$(cd terraform && terraform output -raw user_pool_id)
+        USERNAME=$(cd terraform && terraform output -raw cognito_username)
+        aws cognito-idp admin-set-user-password \
+          --region us-east-1 \
+          --user-pool-id $USER_POOL_ID \
+          --username $USERNAME \
+          --password "{{.PASSWORD}}" \
+          --permanent
+
+  update-cognito-urls:
+    deps: [set-cognito-password]
+    cmds:
+      - |
+        USER_POOL_ID=$(cd terraform && terraform output -raw user_pool_id)
+        CLIENT_ID=$(cd terraform && terraform output -raw client_id)
+        CLOUDFRONT_DOMAIN=$(cd terraform && terraform output -raw cloudfront_url)
+        aws cognito-idp update-user-pool-client \
+          --region us-east-1 \
+          --user-pool-id $USER_POOL_ID \
+          --client-id $CLIENT_ID \
+          --callback-urls "$CLOUDFRONT_DOMAIN/callback" \
+          --logout-urls "$CLOUDFRONT_DOMAIN/logout"
 
   deploy:
     deps:
-      - docker-push
+      - update-cognito-urls

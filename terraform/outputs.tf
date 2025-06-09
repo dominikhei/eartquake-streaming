@@ -3,7 +3,7 @@ output "ecr_url" {
 }
 
 output "cloudfront_url" {
-  value       = module.finops.cloudfront_url
+  value = module.finops.cloudfront_url
 }
 
 output "user_pool_id" {
