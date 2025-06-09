@@ -9,27 +9,22 @@ exports.handler = async (event) => {
     console.log('Request URI:', uri);
     console.log('Query string:', querystring);
     
-    // Configuration from Terraform template
     const cognitoDomain = '${cognito_domain}';
     const clientId = '${client_id}';
     const clientSecret = '${client_secret}';
     
-    // Handle callback from Cognito
     if (uri.startsWith('/callback')) {
         console.log('Handling callback');
         
-        // Parse query parameters
         const params = new URLSearchParams(querystring);
         const code = params.get('code');
         const state = params.get('state');
         
         if (code) {
             try {
-                // Exchange authorization code for tokens
                 const tokenResponse = await exchangeCodeForTokens(code, cognitoDomain, clientId, clientSecret, request);
                 
                 if (tokenResponse.access_token) {
-                    // Parse state to get return URL
                     let returnUrl = '/';
                     if (state) {
                         try {
@@ -40,7 +35,6 @@ exports.handler = async (event) => {
                         }
                     }
                     
-                    // Set authentication cookies and redirect
                     return {
                         status: '302',
                         statusDescription: 'Found',
@@ -67,7 +61,6 @@ exports.handler = async (event) => {
             }
         }
         
-        // If we get here, something went wrong with the callback
         return {
             status: '302',
             statusDescription: 'Found',
@@ -80,15 +73,12 @@ exports.handler = async (event) => {
         };
     }
     
-    // Check for existing authentication
     const cookies = parseCookies(headers.cookie);
     const accessToken = cookies.access_token;
     
     if (accessToken) {
-        // Verify token is still valid (optional - you could call Cognito to verify)
         console.log('User appears to be authenticated');
         
-        // Set the correct path for the versioned index file
         if (uri === '/' || uri === '/index.html') {
             request.uri = '/index.$${site_version}.html';
         }
@@ -96,7 +86,6 @@ exports.handler = async (event) => {
         return request;
     }
     
-    // No authentication found - redirect to Cognito
     console.log('No authentication found, redirecting to Cognito');
     
     const state = Buffer.from(JSON.stringify({
