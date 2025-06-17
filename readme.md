@@ -1,6 +1,6 @@
 ### Introduction
 
-With this project I am building a distributed system to display earthquakes in real time on a map, accessible via your browser. The front end service has an upstream loadbalancer to scale out if needed. Data is streamed from an [external service by the EMSC](https://www.seismicportal.eu/realtime.html) using Springboot Kafka in a Docker Compose setup. The whole AWS infrastructure is created and configured using Terraform. All configurations and relevant role priviledges will be preconfigured, such that you can simply host the application with one command. In addition to that I have implemented logging of the backend using promtail, loki and grafana. The load balancer has an upstream waf firewall.
+With this project I am building a distributed system to display earthquakes in real time on a map, accessible via your browser. The front end service has an upstream loadbalancer to scale out if needed. Data is streamed from an [external service by the EMSC](https://www.seismicportal.eu/realtime.html) using Springboot Kafka in a Docker Compose setup. The whole AWS infrastructure is created and configured using Terraform. All configurations and relevant role priviledges will be preconfigured, such that you can simply host the application with one command. In addition to that I have implemented logging of the backend using Promtail, Loki and Grafana. The load balancer has an upstream waf firewall.
 
 All roles within this project are assumed by services, such that no credentials are used and I have followed the principle of least privileges. The services sit in different subnets with their own security groups, which allow just the required amount of inbound traffic.
 
@@ -13,9 +13,9 @@ All roles within this project are assumed by services, such that no credentials 
 
 ### Process walk through
 
-Once a new event occurs, the Kafka producer will register it and send it to Kafka. The Consumer then reads it and inserts the event into DynamoDB. All logs produced during this process, are collected by promtail and forwarded to loki on another EC2 instance. They are visualized using a Grafana Dashboard to Monitor this part of the system.
+Once a new event occurs, the Kafka producer will register it and send it to Kafka. The Consumer then reads it and inserts the event into DynamoDB. All logs produced during this process, are collected by promtail and forwarded to loki on another EC2 instance. They are visualized using a Grafana Dashboard to monitor this part of the system.
 
-When a user makes a request to the frontend service, an ELB application load balancer routes it to one of the frontend service containers, which are in a private subnet. These containers are deployed via AWS Fargate, read the events from DynamoDB and display them on an interactive map.
+When a user makes a request to the frontend service, an ALB application load balancer routes it to one of the frontend service containers, which are in a private subnet. These containers are deployed via AWS Fargate, read the events from DynamoDB and display them on an interactive map.
 
 ### Architecture
 
@@ -30,15 +30,15 @@ Apache Kafka is a distributed streaming platform which makes it easy to integrat
 
 The Kafka producer extracts the new earthquakes using a websocket, creates a JSONObject and serealizes them using a custom serealizer. Once they are pushed to the kafka topic the consumer pulls them and deserealizes them again using a custom deserealizer, which turns them back into a JSONObject.
 
-The streaming application sits on an EC2 t2-large machine and is defined using docker compose. All services within the Kafka cluster sit in Docker containers. One must note that Kafka is defiently overengineered for this use-case. Neither its throughput, latency or decoupling are interesting here, as we could stream the earthquakes from the WebSocket to the DynamoDB Database in much simpler fashion. However I wanted to build my own custom consumers and producers, which is why I used it here.
+The streaming application sits on an EC2 t2-large machine and is deployed using docker compose. All services within the Kafka cluster sit in Docker containers. One must note that Kafka is definetly overengineered for this use-case. Neither its throughput, latency or decoupling are interesting here, as we could stream the earthquakes from the WebSocket to the DynamoDB Database in much simpler fashion. However I wanted to build my own custom consumers and producers, which is why I used it here.
 
 
 __Consumer & Producer__
 
 Both Consumer and Producer are implemented in Java with SpringBoot.
-The Producer has an open websocket, that listens for new events (an event is an earthquake that has occured). The event is turned into a custom JSONObject with the relevant keys for the scope of this application. The Json is then serealized using a custom serealizer to send it to Kafka. In the scope of Kafka, serealization refers turning an object into a stream of bytes that can be transmitted into the queue.
+The Producer has an open websocket, that listens for new events (an event is an earthquake that has occured). The event is turned into a custom JSONObject with the relevant keys for the scope of this application. The Json is then serealized using a custom serealizer to send it to Kafka. In the scope of Kafka, serealization refers turning an object into a stream of bytes that can be transmitted into the topic.
 
-The Consumer reads the events that have arrived and deserealizes it into a JSONObject. In the next step it is written to DynamoDB, a NoSql Key-Value store on AWS, using the AWS SDK. For security reasons I have opted against using credentials, but instead assuming the role of the underlying EC2 instance, which has just the required least priviledges, i.e is allowed to write to exactly this table.
+The Consumer reads the events that have arrived and deserealizes it into a JSONObject. In the next step it is written to DynamoDB, a NoSql Key-Value store on AWS, using the AWS SDK. For security reasons I have opted against using credentials, but instead assuming the role of the underlying EC2 instance, which has just the required priviledges, i.e is allowed to write to exactly this table.
 
 *This is a detailed visual representation of the Kafka and logging setup:*
 ![](./.images/ec2_services.png)
@@ -70,7 +70,7 @@ The Kafka Consumer will write directly to DynamoDB. As a magnitude 1+ earthquake
 
 __Frontend service__
 
-The Frontend is a containerized streamlit app. Once you run a terraform apply command, the image is automatically built and uploaded to AWS Ecr. A Fargate task pulls the image from there. The frontend can get the eartquake data from DynamoDb using the assumed role by Fargate.
+The Frontend is a containerized streamlit app. Once you run the task pipeline, the image is automatically built and uploaded to AWS Ecr. A Fargate task pulls the image from there. The frontend can get the eartquake data from DynamoDb using the assumed role by Fargate.
 
 *This is how the Dashboard currently looks like:*
 ![](.images/eartquake_frontend.png)
