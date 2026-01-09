@@ -126,6 +126,9 @@ The whole project including configurations will now be created for you. Task doe
 
 These are some topics, which could be added next:
 
-- HTTPS Load Balancer
-- Exporting DynamoDB Data to S3 (via lambda daily export)
+- DynamoDB Endpoints
+- Put everything in private subnets
+- EKS deployment
+- Alerting
+- Unified Monitoring
 - Place Kafka & Grafana Instance in a private subnet and the Dashboard behind the ALB
